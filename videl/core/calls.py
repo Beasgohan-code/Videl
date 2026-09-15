@@ -31,6 +31,7 @@ from videl import (
     yt,
 )
 from videl.helpers._dataclass import Media, Track
+from videl.helpers._filters_dsp import get_dsp_ffmpeg_param
 
 
 def format_player_caption(media: Union[Media, Track], played_sec: int = 1) -> str:
@@ -114,6 +115,15 @@ class TgCall(PyTgCalls):
             await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
             return await self.play_next(chat_id)
 
+        dsp = await db.get_dsp(chat_id)
+        dsp_param = get_dsp_ffmpeg_param(dsp)
+        ffmpeg_parts = []
+        if seek_time > 1:
+            ffmpeg_parts.append(f"-ss {seek_time}")
+        if dsp_param:
+            ffmpeg_parts.append(dsp_param)
+        ffmpeg_final = " ".join(ffmpeg_parts) if ffmpeg_parts else None
+
         stream = types.MediaStream(
             media_path=media.file_path,
             audio_parameters=types.AudioQuality.HIGH,
@@ -124,7 +134,7 @@ class TgCall(PyTgCalls):
                 if media.video
                 else types.MediaStream.Flags.IGNORE
             ),
-            ffmpeg_parameters=f"-ss {seek_time}" if seek_time > 1 else None,
+            ffmpeg_parameters=ffmpeg_final,
         )
 
         try:

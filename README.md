@@ -1,8 +1,8 @@
 <div align="center">
 
-# ⚡ Videl Music & Management Bot
+# ⚡ Videl Music & Ultra Management Bot
 
-**Next-Generation Telegram Voice Chat Music Streamer & Group Management Suite**  
+**Next-Generation Telegram Voice Chat Music Streamer & Complete Group Administration Suite**  
 *Engineered with Pyrogram / Kurigram, PyTgCalls, MongoDB, and modern Telegram Bot API features.*
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
@@ -41,20 +41,25 @@ Requested by Rahul 🤍
 ## 🌟 Highlights & Capabilities
 
 - 🎧 **HD Audio & 1080p Video Streaming**: Crystal-clear Opus audio and fluid 60FPS video playback in Telegram Voice/Video chats with dynamic progress bars.
+- 🎛 **Real-Time DSP Equalizer & Effects**: Real-time audio filters (`/bassboost`, `/superbass`, `/nightcore`, `/slowed`, `/8d`, `/vaporwave`, `/eq`).
+- 📻 **24/7 Curated Live Radio**: Stream Lofi 24/7, Synthwave, Chillhop, Anime OST, EDM, Rock, Pop, and Jazz stations with `/radio`.
+- 🔍 **Shazam Audio Identification**: Reply to any voice note or video with `/shazam` to identify track name, artist, album, and get 1-tap stream/download buttons.
+- 🎙 **Voice Chat Recording**: Record ongoing voice chats to high-bitrate MP3 files with `/record` and `/stoprecord`.
+- 💾 **Personal Playlists**: Create, manage, and batch-queue personal playlists (`/playlist`, `/addplaylist`, `/delplaylist`, `/playplaylist`).
 - ⚡ **Multi-Assistant Load Balancer**: Multi-assistant clustering (`SESSION1` to `SESSION5`) with automated round-robin routing and seamless failover.
 - 📥 **High-Speed Video & Song Downloader**: Download 320kbps MP3s and 1080p/720p MP4 videos directly to Telegram chats via `/song`, `/video`, and `/download`.
 - 🛡 **Full Group Moderation Suite**: Fast admin commands (`/ban`, `/tban`, `/unban`, `/mute`, `/tmute`, `/unmute`, `/kick`, `/pin`, `/purge`, `/del`, `/staff`, `/id`, `/info`).
+- 🔒 **Chat Permissions & Locks**: Lock stickers, media, links, voice, forwards, bots, and polls (`/lock`, `/unlock`, `/locks`).
+- 🛡 **Anti-Flood & Spam Protection**: Auto-mutes users sending messages too quickly (`/antiflood`, `/setflood`).
+- 📝 **Custom Filters & Notes**: Auto-responder keyword filters (`/filter`, `/filters`) and saved notes (`/save`, `/get`, `/notes`).
+- 👋 **Custom Welcome & Clean Service**: Customizable welcome cards (`/setwelcome`) and auto-cleaning join/leave service messages (`/cleanservice`).
+- 🗣 **Text-to-Speech (TTS)**: Synthesize high quality speech in 50+ languages with `/tts` and `/voice`.
+- 🎮 **Music Trivia Quiz Game**: Interactive voice chat guess-the-song quiz with countdowns and score tracking via `/songquiz`.
+- 😴 **AFK System**: Global AFK status notifier with elapsed time tracking (`/afk`).
+- 📢 **Tag All / Mentions**: Batch-mention group members with customized prompts (`/tagall`, `/cancel_tagall`).
 - 🎨 **Dynamic Glassmorphic Thumbnail Engine**: Real-time PIL-generated album art cards with song metadata, waveforms, and time indicators.
 - 🌐 **13+ Languages Localization**: Built-in multi-language translation engine (English, Hindi, Spanish, French, Russian, Arabic, German, Japanese, Portuguese, Turkish, Punjabi, Burmese, Chinese).
-- 🔄 **Audio Controls & FX**: Volume control (`1-200%`), speed adjustment (`0.75x-2.0x`), real-time loop modes, playlist shuffling, seeking forward/backward, and song replay.
-- 📜 **Instant Lyrics Scraper**: Real-time expandable lyrics cards in chat.
-- 📱 **Universal Platform Support**:
-  - **YouTube & YouTube Music** (Single tracks, search queries, playlists, shorts, live streams)
-  - **Spotify** (Tracks, albums, public playlists)
-  - **Apple Music** & **SoundCloud**
-  - **Direct URLs** (MP3, M3U8, MP4, AAC, FLAC streams)
-  - **Telegram Files** (Native audio, voice notes, video files with live download progress)
-- 🚀 **Diagnostics & Maintenance**: Network speedtest (`/speedtest`), assistant cleanup (`/leaveall`), interactive search (`/search`), global broadcast (`/broadcast`), and developer eval (`/eval`, `/sh`).
+- 🚀 **Diagnostics & Maintenance**: Network speedtest (`/speedtest`), assistant cleanup (`/leaveall`), assistant status (`/assistants`), database backup (`/dbbackup`), maintenance toggle (`/maintenance`), global broadcast (`/broadcast`), and developer eval (`/eval`, `/sh`).
 
 ---
 
@@ -100,6 +105,23 @@ Requested by Rahul 🤍
 | `/lyrics [song name]` | Fetches song lyrics |
 | `/search [query]` | Interactive YouTube search with 1-tap play/download buttons |
 
+### 🎛 Audio Equalizer, Radio & Special Media
+| Command | Description |
+| :--- | :--- |
+| `/eq` or `/effects` | Interactive DSP Audio Equalizer menu |
+| `/bassboost` / `/superbass` | Applies heavy bass boost effect |
+| `/nightcore` | Applies Nightcore pitch/tempo effect |
+| `/slowed` | Applies Slowed + Reverb effect |
+| `/8d` | Applies 8D surround audio panning |
+| `/vaporwave` | Applies Vaporwave retro effect |
+| `/radio` or `/live` | 24/7 curated live streaming stations (Lofi, Synthwave, EDM, Rock, Pop) |
+| `/shazam` or `/whatsong` | Recognizes song by replying to any audio/video |
+| `/record` / `/stoprecord` | Records voice chat audio and exports MP3 |
+| `/playlist` / `/myplaylist` | Views personal saved tracks |
+| `/addplaylist [query / link]` | Adds song to personal playlist |
+| `/delplaylist [ID]` | Deletes song from personal playlist |
+| `/playplaylist` | Streams your entire personal playlist in voice chat |
+
 ### 📥 Video & Audio Downloader
 | Command | Description |
 | :--- | :--- |
@@ -116,10 +138,26 @@ Requested by Rahul 🤍
 | `/mute [reply / id] [time]` | Mutes a user (supports temp mutes) |
 | `/unmute [reply / id]` | Unmutes a user |
 | `/kick [reply / id]` | Kicks a user from the group |
+| `/lock [type]` / `/unlock` | Locks/unlocks stickers, media, links, voice, forwards, bots |
+| `/locks` | Displays active chat locks |
+| `/antiflood [limit/off]` | Sets anti-flood spam limit |
+| `/filter [keyword] [reply]` | Adds auto-reply keyword filter |
+| `/stopfilter [keyword]` | Removes keyword filter |
+| `/filters` | Lists active filters |
+| `/save [name] [text]` | Saves group note (accessible via `/get [name]` or `#[name]`) |
+| `/notes` / `/clear [name]` | Lists or deletes notes |
+| `/setwelcome [text]` | Sets custom welcome message with placeholders |
+| `/delwelcome` | Resets welcome message |
+| `/cleanservice [on/off]` | Auto-deletes join/leave/pinned service events |
 | `/pin` / `/unpin` / `/unpinall` | Pins or unpins messages |
 | `/purge` / `/del` | Fast message deleter & purger |
 | `/staff` or `/adminlist` | Displays group staff & admin roster |
 | `/id` or `/info` | Displays user and chat ID card with 1-tap copy buttons |
+| `/tagall [prompt]` | Mentions all group members |
+| `/cancel_tagall` | Stops ongoing mention spree |
+| `/tts [text]` | Converts text to voice note |
+| `/songquiz` | Starts voice chat song trivia game |
+| `/afk [reason]` | Sets user to AFK status |
 | `/settings` or `/playmode` | Interactive button settings panel (Playmode, Cleanmode, Language) |
 | `/lang` or `/language` | Opens 13-language selector |
 | `/auth [reply / id]` | Authorizes a non-admin user to control playback |
@@ -134,7 +172,10 @@ Requested by Rahul 🤍
 | `/speedtest` or `/spt` | Runs network speedtest (download, upload, latency, ISP) |
 | `/stats` | Shows served chats, total users, assistants, and system diagnostics |
 | `/activevc` or `/ac` | Shows count and list of active voice chat streams |
+| `/assistants` | Live health and ping status of all 5 assistants |
 | `/leaveall` | Instructs assistants to leave all non-active chats |
+| `/maintenance [on/off]` | Toggles maintenance mode |
+| `/dbbackup` | Dumps MongoDB database backup to JSON |
 | `/broadcast [reply]` | Broadcasts message globally (`-user`, `-nochat`, `-copy`) |
 | `/blacklist [chat_id / id]`| Blacklists group or user from using the bot |
 | `/unblacklist [chat_id]` | Removes target from blacklist |
@@ -229,7 +270,7 @@ Videl/
 │   │   ├── bot.py            # Custom Telegram Bot Client
 │   │   ├── calls.py          # PyTgCalls Voice & Video Stream Engine
 │   │   ├── dir.py            # Runtime directory manager
-│   │   ├── lang.py           # Multi-language localization engine
+│   │   ├── lang.py           # Multi-language localization engine (13+ languages)
 │   │   ├── mongo.py          # High-speed cached MongoDB database
 │   │   ├── telegram.py       # Telegram native media downloader
 │   │   ├── userbot.py        # Multi-Assistant userbot manager (1-5)
@@ -239,6 +280,7 @@ Videl/
 │   │   ├── _api.py           # Fallback stream API client
 │   │   ├── _dataclass.py     # Track & Media dataclasses
 │   │   ├── _exec.py          # Asynchronous eval runner
+│   │   ├── _filters_dsp.py   # FFmpeg Equalizer & DSP audio effects
 │   │   ├── _inline.py        # Modern Inline Keyboards with ButtonStyle
 │   │   ├── _play.py          # Assistant auto-join & play middleware
 │   │   ├── _queue.py         # Advanced playlist queue manager
@@ -249,30 +291,41 @@ Videl/
 │   │   ├── Inter-Light.ttf   # UI Font
 │   │   └── Raleway-Bold.ttf  # Header Font
 │   ├── locales/              # 13 JSON Localization files
-│   └── plugins/              # 32 Modular commands & feature plugins
+│   └── plugins/              # 46 Modular commands & feature plugins
 │       ├── active.py         # Active voice chat tracker
 │       ├── admin.py          # Group moderation (ban, mute, kick, purge, pin, staff)
+│       ├── afk.py            # AFK status tracker
+│       ├── antiflood.py      # Anti-flood spam protection
+│       ├── audio_fx.py       # Real-time DSP Equalizer & Audio FX
 │       ├── auth.py           # Auth users manager
 │       ├── blacklist.py      # Blacklist / Whitelist manager
 │       ├── broadcast.py      # Global broadcast manager
 │       ├── callbacks.py      # Callback query router
 │       ├── downloader.py     # YouTube Video & MP3 Song Downloader
 │       ├── eval.py           # Python / Bash eval runner
+│       ├── filters_notes.py  # Group custom filters & saved notes
+│       ├── game.py           # Music Trivia Quiz game
 │       ├── iquery.py         # Telegram inline query search
 │       ├── language.py       # Multi-language switcher
 │       ├── leaveall.py       # Assistant leave inactive groups
+│       ├── locks.py          # Chat permissions locks
 │       ├── loop.py           # Loop stream controller
 │       ├── lyrics.py         # Song lyrics scraper
+│       ├── maintenance.py    # Maintenance mode, assistants status & DB backup
 │       ├── misc.py           # Background timers & VC auto-leave
 │       ├── pause.py          # Pause stream
 │       ├── ping.py           # Health check & latency
 │       ├── play.py           # Audio & Video streamer
+│       ├── playlists.py      # Personal & group playlists manager
 │       ├── queue.py          # Playlist queue viewer
+│       ├── radio.py          # 24/7 Curated live radio stations
+│       ├── record.py         # Voice chat audio recording
 │       ├── replay.py         # Replay current song
 │       ├── restart.py        # Clean restart & logs
 │       ├── resume.py         # Resume stream
 │       ├── search.py         # Interactive YouTube search
 │       ├── seek.py           # Forward / Backward seek
+│       ├── shazam.py         # Shazam song recognition
 │       ├── shuffle.py        # Queue shuffle
 │       ├── skip.py           # Skip to next song
 │       ├── speed.py          # Playback speed controller
@@ -281,7 +334,10 @@ Videl/
 │       ├── stats.py          # System performance stats
 │       ├── stop.py           # Stop playback
 │       ├── sudoers.py        # Sudo users management
-│       └── volume.py         # Audio volume controller
+│       ├── tagall.py         # Batch mention group members
+│       ├── tts.py            # Text to speech synthesizer
+│       ├── volume.py         # Audio volume controller
+│       └── welcome.py        # Custom welcome & clean service
 ├── config.py                 # Central configuration parser
 ├── sample.env                # Environment variables template
 ├── requirements.txt          # Python dependencies
