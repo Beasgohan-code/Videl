@@ -56,6 +56,10 @@ async def main():
     app.sudoers.update(sudoers)
     app.bl_users.update(await db.get_blacklisted())
     logger.info(f"Loaded {len(app.sudoers)} sudo users and {len(app.bl_users)} blacklisted users.")
+
+    from videl.core.server import start_server
+    await start_server()
+
     logger.info("⚡ Videl Music Bot is fully online and ready!")
 
     await idle()

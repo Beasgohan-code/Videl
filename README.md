@@ -3,7 +3,7 @@
 # ⚡ Videl Music & Ultra Management Bot
 
 **Next-Generation Telegram Voice Chat Music Streamer & Complete Group Administration Suite**  
-*Engineered with Dual-Engine Architecture (Pyrogram/Kurigram MTProto + Aiogram 3.x Bot API 8.x/10.x), PyTgCalls, MongoDB, and Dynamic Equalizer DSP.*
+*Engineered with Dual-Engine Architecture (Pyrogram/Kurigram MTProto + Aiogram 3.x Bot API 8.x/10.x), PyTgCalls, MongoDB, Real-time DSP Equalizers, and Auto-Healing Infrastructure.*
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Telegram Bot API](https://img.shields.io/badge/Bot%20API-10.2%2B%20%7C%208.0%2B-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
@@ -41,13 +41,16 @@ Requested by Rahul 🤍
 ## 🌟 Highlights & Capabilities
 
 - 🎧 **HD Audio & 1080p Video Streaming**: Crystal-clear Opus audio and fluid 60FPS video playback in Telegram Voice/Video chats with dynamic progress bars.
-- 🎛 **Real-Time DSP Equalizer & Effects**: Real-time audio filters (`/bassboost`, `/superbass`, `/nightcore`, `/slowed`, `/8d`, `/vaporwave`, `/eq`).
+- 🎛 **Real-Time DSP Equalizer & Effects**: Real-time audio filters (`/bassboost`, `/superbass`, `/nightcore`, `/slowed`, `/8d`, `/vaporwave`, `/karaoke`, `/surround`, `/eq`).
 - 🤖 **Smart AutoPlay / AI DJ**: Automated smart endless music recommendation fallback that keeps music playing smoothly when your queue finishes (`/autodj`).
 - ⭐️ **Telegram Stars Invoices & Tipping**: Native Telegram Stars donations (`/stars`, `/tip`, `/donate`) powered by Bot API 8.x/10.x Star currency (`XTR`).
 - ✨ **Animated Visual Message Effects**: Fire, Celebration, Heart, Lightning, and Confetti message effects (`/effect`, `/react`).
 - 📱 **Telegram Mini App & WebApp**: Interactive Mini App music controller and web dashboard (`/webapp`, `/miniapp`).
 - 📢 **Linked Channel Streaming**: Play music in linked broadcast channels seamlessly (`/cplay`, `/cvplay`, `/cpause`, `/cresume`, `/cstop`, `/cqueue`, `/channel`).
 - 🔄 **Assistant Live Auto-Bio Sync**: Dynamically updates assistant Telegram profile bios with real-time streaming metadata (`/autobio`).
+- 👤 **Assistant Profile Manager**: Update assistant profile photo, display names, and bio directly via Telegram (`/setpfp`, `/delpfp`, `/setname`, `/setbio`, `/assjoin`, `/assleave`).
+- 🧹 **Automated Cache Garbage Collector**: Auto-cleans stale temporary `.mp3` and `.mp4` downloads every 30 minutes to keep disk usage near zero (`/clearcache`, `/cleanup`).
+- 🛰 **Voice Chat State Watcher**: Intercepts `video_chat_started`, `video_chat_ended`, and member leave events to prevent desyncs and clean up queues.
 - 📻 **24/7 Curated Live Radio**: Stream Lofi 24/7, Synthwave, Chillhop, Anime OST, EDM, Rock, Pop, and Jazz stations with `/radio`.
 - 🔍 **Shazam Audio Identification**: Reply to any voice note or video with `/shazam` to identify track name, artist, album, and get 1-tap stream/download buttons.
 - 🎙 **Voice Chat Recording**: Record ongoing voice chats to high-bitrate MP3 files with `/record` and `/stoprecord`.
@@ -63,9 +66,10 @@ Requested by Rahul 🤍
 - 🎮 **Music Trivia Quiz Game**: Interactive voice chat guess-the-song quiz with countdowns and score tracking via `/songquiz`.
 - 😴 **AFK System**: Global AFK status notifier with elapsed time tracking (`/afk`).
 - 📢 **Tag All / Mentions**: Batch-mention group members with customized prompts (`/tagall`, `/cancel_tagall`).
+- 🏥 **Built-in HTTP Healthcheck Server**: Lightweight async web server on port 8080 (or `PORT`) for Docker, Render, Koyeb, Railway, and UptimeRobot uptime monitoring.
 - 🎨 **Dynamic Glassmorphic Thumbnail Engine**: Real-time PIL-generated album art cards with song metadata, waveforms, and time indicators.
 - 🌐 **13+ Languages Localization**: Built-in multi-language translation engine (English, Hindi, Spanish, French, Russian, Arabic, German, Japanese, Portuguese, Turkish, Punjabi, Burmese, Chinese).
-- 🚀 **Diagnostics & Maintenance**: Network speedtest (`/speedtest`), assistant cleanup (`/leaveall`), assistant status (`/assistants`), database backup (`/dbbackup`), maintenance toggle (`/maintenance`), global broadcast (`/broadcast`), and developer eval (`/eval`, `/sh`).
+- 🚀 **Diagnostics & Maintenance**: Network speedtest (`/speedtest`), config viewer with masked credentials (`/config`, `/vars`), assistant cleanup (`/leaveall`), assistant status (`/assistants`), database backup (`/dbbackup`), maintenance toggle (`/maintenance`), global broadcast (`/broadcast`), and developer eval (`/eval`, `/sh`).
 
 ---
 
@@ -140,6 +144,8 @@ Videl utilizes a hybrid dual-engine bridge (`TelegramBridge`):
 | `/slowed` | Applies Slowed + Reverb effect |
 | `/8d` | Applies 8D surround audio panning |
 | `/vaporwave` | Applies Vaporwave retro effect |
+| `/karaoke` | Removes vocals (center-channel cancellation) |
+| `/surround` | Applies 3D spatial surround sound |
 | `/radio` or `/live` | 24/7 curated live streaming stations (Lofi, Synthwave, EDM, Rock, Pop) |
 | `/shazam` or `/whatsong` | Recognizes song by replying to any audio/video |
 | `/record` / `/stoprecord` | Records voice chat audio and exports MP3 |
@@ -191,7 +197,7 @@ Videl utilizes a hybrid dual-engine bridge (`TelegramBridge`):
 | `/authlist` | Shows list of authorized users in current chat |
 | `/reload` or `/admincache` | Refreshes administrator cache for the group |
 
-### ⚡ Sudo & Developer Commands
+### ⚡ Sudo, Assistant & Developer Commands
 | Command | Description |
 | :--- | :--- |
 | `/ping` or `/alive` | Checks bot latency, PyTgCalls ping, uptime, and system RAM/CPU |
@@ -199,7 +205,12 @@ Videl utilizes a hybrid dual-engine bridge (`TelegramBridge`):
 | `/stats` | Shows served chats, total users, assistants, and system diagnostics |
 | `/activevc` or `/ac` | Shows count and list of active voice chat streams |
 | `/assistants` | Live health and ping status of all 5 assistants |
+| `/setpfp` / `/delpfp` | Changes or deletes assistant's profile picture |
+| `/setname` / `/setbio` | Updates assistant display name or bio |
+| `/assjoin` / `/assleave` | Forces assistant to join or leave a specific chat |
 | `/leaveall` | Instructs assistants to leave all non-active chats |
+| `/clearcache` / `/cleanup` | Purges all temporary download files and caches |
+| `/config` or `/vars` | Securely inspects environment variables in PM |
 | `/maintenance [on/off]` | Toggles maintenance mode |
 | `/dbbackup` | Dumps MongoDB database backup to JSON |
 | `/broadcast [reply]` | Broadcasts message globally (`-user`, `-nochat`, `-copy`) |
@@ -239,7 +250,7 @@ nano .env
 
 # Build and run container
 docker build -t videl-music .
-docker run -d --name videl --env-file .env videl-music
+docker run -d --name videl -p 8080:8080 --env-file .env videl-music
 ```
 
 ---
@@ -273,6 +284,7 @@ bash start
 | `SESSION` | **Yes** | Pyrogram / Kurigram String Session (from [@StringFatherBot](https://t.me/StringFatherBot)) |
 | `SESSION2` - `SESSION5` | No | Additional assistant string sessions for multi-assistant scaling |
 | `BOT_NAME` | No | Display name of the bot (Default: `Videl Music`) |
+| `PORT` | No | Port for HTTP healthcheck server (Default: `8080`) |
 | `SUPPORT_CHAT` | No | Link to your Telegram support group |
 | `SUPPORT_CHANNEL` | No | Link to your Telegram updates channel |
 | `DURATION_LIMIT` | No | Max track duration in minutes (Default: `60`) |
@@ -299,6 +311,7 @@ Videl/
 │   │   ├── dir.py            # Runtime directory manager
 │   │   ├── lang.py           # Multi-language localization engine (13+ languages)
 │   │   ├── mongo.py          # High-speed cached MongoDB database
+│   │   ├── server.py         # Async HTTP Healthcheck server (Port 8080/PORT)
 │   │   ├── telegram.py       # Telegram native media downloader
 │   │   ├── userbot.py        # Multi-Assistant userbot manager (1-5)
 │   │   └── youtube.py        # Multi-platform audio/video resolver
@@ -318,11 +331,12 @@ Videl/
 │   │   ├── Inter-Light.ttf   # UI Font
 │   │   └── Raleway-Bold.ttf  # Header Font
 │   ├── locales/              # 13 JSON Localization files
-│   └── plugins/              # 52 Modular commands & feature plugins
+│   └── plugins/              # 56 Modular commands & feature plugins
 │       ├── active.py         # Active voice chat tracker
 │       ├── admin.py          # Group moderation (ban, mute, kick, purge, pin, staff)
 │       ├── afk.py            # AFK status tracker
 │       ├── antiflood.py      # Anti-flood spam protection
+│       ├── assistant.py      # Assistant profile photo, bio, name & join/leave manager
 │       ├── audio_fx.py       # Real-time DSP Equalizer & Audio FX
 │       ├── auth.py           # Auth users manager
 │       ├── autobio.py        # Assistant Auto-Bio real-time profile updater
@@ -331,6 +345,7 @@ Videl/
 │       ├── broadcast.py      # Global broadcast manager
 │       ├── callbacks.py      # Callback query router
 │       ├── channel.py        # Channel Streaming (/cplay, /cpause, /cresume, /cstop)
+│       ├── cleaner.py        # Automated cache garbage collector & disk cleaner
 │       ├── downloader.py     # YouTube Video & MP3 Song Downloader
 │       ├── effects.py        # Bot API 8.x/10.x visual message effects & reactions
 │       ├── eval.py           # Python / Bash eval runner
@@ -368,7 +383,9 @@ Videl/
 │       ├── sudoers.py        # Sudo users management
 │       ├── tagall.py         # Batch mention group members
 │       ├── tts.py            # Text to speech synthesizer
+│       ├── variables.py      # Config & Environment variable inspector
 │       ├── volume.py         # Audio volume controller
+│       ├── watcher.py        # Voice chat event listener & queue cleaner
 │       ├── webapp.py         # Interactive HTML5 Mini App music controller
 │       └── welcome.py        # Custom welcome & clean service
 ├── config.py                 # Central configuration parser

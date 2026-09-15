@@ -24,6 +24,10 @@ def dsp_menu_markup(chat_id: int, current: str):
             styled_button(text="🌴 Vaporwave" + (" ✔️" if current == "vaporwave" else ""), callback_data=f"dsp_set {chat_id} vaporwave", style=ButtonStyle.PRIMARY if current == "vaporwave" else ButtonStyle.DEFAULT),
         ],
         [
+            styled_button(text="🎤 Karaoke (Vocal Cut)" + (" ✔️" if current == "karaoke" else ""), callback_data=f"dsp_set {chat_id} karaoke", style=ButtonStyle.PRIMARY if current == "karaoke" else ButtonStyle.DEFAULT),
+            styled_button(text="🌐 3D Surround" + (" ✔️" if current == "surround3d" else ""), callback_data=f"dsp_set {chat_id} surround3d", style=ButtonStyle.PRIMARY if current == "surround3d" else ButtonStyle.DEFAULT),
+        ],
+        [
             styled_button(text="✨ Normal / Reset", callback_data=f"dsp_set {chat_id} normal", style=ButtonStyle.DANGER),
             styled_button(text="🗑 Close", callback_data="help close", style=ButtonStyle.DEFAULT),
         ]
@@ -31,7 +35,7 @@ def dsp_menu_markup(chat_id: int, current: str):
     return types.InlineKeyboardMarkup(buttons)
 
 
-@app.on_message(filters.command(["eq", "equalizer", "dsp", "effects", "bassboost", "nightcore", "slowed", "8d", "vaporwave", "resetfilter"]) & filters.group & ~app.bl_users)
+@app.on_message(filters.command(["eq", "equalizer", "dsp", "effects", "bassboost", "nightcore", "slowed", "8d", "vaporwave", "karaoke", "surround", "resetfilter"]) & filters.group & ~app.bl_users)
 @lang.language()
 @can_manage_vc
 async def dsp_handler(_, m: types.Message):
@@ -54,6 +58,8 @@ async def dsp_handler(_, m: types.Message):
         "slowed": "slowed",
         "8d": "8d",
         "vaporwave": "vaporwave",
+        "karaoke": "karaoke",
+        "surround": "surround3d",
         "resetfilter": "normal",
     }
     chosen = effect_map.get(cmd, "normal")
