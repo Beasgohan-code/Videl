@@ -19,6 +19,30 @@ from videl import (
 from videl.helpers._inline import buttons
 
 
+@app.on_message(filters.new_chat_members)
+async def new_chat_watcher(_, message: types.Message):
+    if not message.new_chat_members:
+        return
+    for member in message.new_chat_members:
+        if member.id == app.id:
+            await db.add_chat(message.chat.id)
+            count = await app.get_chat_members_count(message.chat.id)
+            user_by = message.from_user.mention if message.from_user else "Unknown"
+            if app.logger_id:
+                try:
+                    await app.send_message(
+                        app.logger_id,
+                        f"🎉 <b><u>Bot Added to New Group!</u></b>\n\n"
+                        f"🏷 <b>Title:</b> {message.chat.title}\n"
+                        f"🆔 <b>Chat ID:</b> <code>{message.chat.id}</code>\n"
+                        f"👥 <b>Members:</b> <code>{count}</code>\n"
+                        f"👤 <b>Added By:</b> {user_by}\n"
+                        f"🔗 <b>Username:</b> @{message.chat.username}" if message.chat.username else "",
+                    )
+                except Exception:
+                    pass
+
+
 @app.on_message(filters.video_chat_started, group=19)
 @app.on_message(filters.video_chat_ended, group=20)
 async def _watcher_vc(_, m: types.Message):

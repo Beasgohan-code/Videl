@@ -20,7 +20,7 @@ def playlist_to_queue(chat_id: int, tracks: list) -> str:
 
 
 @app.on_message(
-    filters.command(["play", "playforce", "vplay", "vplayforce", "cplay"])
+    filters.command(["play", "playforce", "vplay", "vplayforce", "cplay", "stream", "vstream"])
     & filters.group
     & ~app.bl_users
 )
