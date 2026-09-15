@@ -3,7 +3,7 @@
 # ⚡ Videl Music & Ultra Management Bot
 
 **Next-Generation Telegram Voice Chat Music Streamer & Complete Group Administration Suite**  
-*Engineered with Dual-Engine Architecture (Pyrogram/Kurigram MTProto + Aiogram 3.x Bot API 8.x/10.x), PyTgCalls, MongoDB, Real-time DSP Equalizers, In-Bot Session Generator, and Auto-Healing Infrastructure.*
+*Engineered with Dual-Engine Architecture (Pyrogram/Kurigram MTProto + Aiogram 3.x Bot API 8.x/10.x), PyTgCalls, MongoDB, Real-time DSP Equalizers, In-Bot Session Generator, PIL Glassmorphic Quotes, Rich Math & Unicode Tables.*
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Telegram Bot API](https://img.shields.io/badge/Bot%20API-10.2%2B%20%7C%208.0%2B-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
@@ -14,7 +14,7 @@
   <img src="https://files.catbox.moe/zvziwk.jpg" alt="Videl Music Banner" width="650" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
 </p>
 
-[**Player UI Showcase**](#-sleek-player-ui) • [**Features**](#-highlights--capabilities) • [**Bot API 8.x/10.x Innovations**](#-modern-bot-api-innovations) • [**Commands**](#-commands) • [**Deploy Guide**](#-deployment) • [**Configuration**](#-environment-variables)
+[**Player UI Showcase**](#-sleek-player-ui) • [**Features**](#-highlights--capabilities) • [**Rich UI & Formatting**](#-rich-ui-formatting--cards) • [**Commands**](#-commands) • [**Deploy Guide**](#-deployment) • [**Configuration**](#-environment-variables)
 
 </div>
 
@@ -43,6 +43,10 @@ Requested by Rahul 🤍
 - 🎧 **HD Audio & 1080p Video Streaming**: Crystal-clear Opus audio and fluid 60FPS video playback in Telegram Voice/Video chats with dynamic progress bars.
 - 🎛 **Real-Time DSP Equalizer & Effects**: Real-time audio filters (`/bassboost`, `/superbass`, `/nightcore`, `/slowed`, `/8d`, `/vaporwave`, `/karaoke`, `/surround`, `/eq`).
 - 🤖 **Smart AutoPlay / AI DJ**: Automated smart endless music recommendation fallback that keeps music playing smoothly when your queue finishes (`/autodj`).
+- 🖼 **Glassmorphic Quote Card Generator**: Convert any replied-to Telegram message into a high-res, glassmorphic quote sticker/image card with user avatar and gradient borders (`/quote`, `/q`).
+- 📐 **Rich Math & Formula Evaluator**: Compute arithmetic, algebra, trigonometry, powers, square roots, and factorials with Unicode math formatting and box-drawing calculation tables (`/math`, `/calc`).
+- 📊 **Unicode Box-Drawing Tables**: Generate formatted box tables (`┌─┬─┐`, `│ │ │`, `└─┴─┘`) directly in chat (`/table`, `/asciitable`).
+- 🌟 **Rich Media Cards & Headings**: Render rich media captions with bold stylized headers, expandable blockquotes, and `ButtonStyle` interactive actions (`/card`, `/mediacard`).
 - 🔐 **In-Bot String Session Generator (Admin Only)**: Generate Pyrogram string sessions interactively within PM with OTP, 2FA support, and `/cancel` safeguard (`/generate_session`, `/genstring`).
 - 🚨 **Global Ban (GBan) System**: Cross-chat enforcement banning spammers and malicious users across all served groups with automated join-prevention (`/gban`, `/ungban`, `/gbanlist`).
 - ⭐️ **Telegram Stars Invoices & Tipping**: Native Telegram Stars donations (`/stars`, `/tip`, `/donate`) powered by Bot API 8.x/10.x Star currency (`XTR`).
@@ -75,26 +79,38 @@ Requested by Rahul 🤍
 
 ---
 
-## 💎 Modern Bot API Innovations
+## 💎 Rich UI Formatting & Cards
 
-### 1. Dual-Engine Architecture
-Videl utilizes a hybrid dual-engine bridge (`TelegramBridge`):
-- **Kurigram / Pyrogram MTProto**: Powers low-latency voice chat streaming, high-speed file transfers, and userbot multi-assistant clusters.
-- **Aiogram 3.31+ Bot API Engine**: Dispatches modern Bot API 8.x / 10.x endpoints including `message_effect_id`, `send_invoice` (Stars `XTR`), `set_message_reaction`, and HTML5 Mini App handshakes.
+### 1. Unicode Box-Drawing Tables (`/table`)
+```
+┌─────────────────┬──────────────┬──────────┐
+│ Track           │ Artist       │ Duration │
+├─────────────────┼──────────────┼──────────┤
+│ Criminal        │ Britney      │ 3:44     │
+│ Faded           │ Alan Walker  │ 3:32     │
+└─────────────────┴──────────────┴──────────┘
+```
 
-### 2. `ButtonStyle` Support
+### 2. Math & Formula Computation (`/math`)
+```
+┌───────────────────┬───────────────────────────┐
+│ Field             │ Value                     │
+├───────────────────┼───────────────────────────┤
+│ Input Expression  │ sqrt(256) * cos(0) + 2^8  │
+│ Standard Form     │ √256 × cos(0) + 2 ^ 8     │
+│ Calculated Result │ 272                       │
+└───────────────────┴───────────────────────────┘
+```
+
+### 3. Glassmorphic Quote Stickers (`/quote`, `/q`)
+- Turns any replied message into a stylized card with user avatar, name, handle, wrapped quote text, and timestamp.
+
+### 4. `ButtonStyle` Support
 - **`primary`** (Accent highlighted buttons: *Play*, *Resume*, *Queue Counter*, *Copy Link*)
 - **`danger`** (Red alert buttons: *Stop*, *Cancel Download*, *Close*, *Delete*)
 - **`success`** (Green confirmation buttons: *Enabled Status*, *Selected Language*)
 - **`disabled`** (Disabled/non-clickable buttons for status and placeholders)
 - **`default`** (Neutral navigation & controls)
-
-### 3. `RichMessage` & Structured Blocks
-- **Blockquote cards**: `<blockquote expandable>` for long playlists, staff lists, and lyrics.
-- **Rich Markdown Formatting**: Pull quotes, headers, code blocks, and dynamic streaming drafts.
-
-### 4. `copy_text` 1-Tap Copy Buttons
-- Quick-copy YouTube URLs, track IDs, user IDs, and chat IDs straight into clipboard with one tap.
 
 ---
 
@@ -106,6 +122,8 @@ Videl utilizes a hybrid dual-engine bridge (`TelegramBridge`):
 | `/play [query / URL / reply]` | Streams audio in voice chat from YouTube, Spotify, or Telegram |
 | `/vplay [query / URL / reply]` | Streams video with HD video feed |
 | `/playforce` or `/vplayforce` | Force plays track immediately, placing it at the front of queue |
+| `/stream [m3u8 / URL]` | Streams live radio / direct HTTP stream in voice chat |
+| `/vstream [m3u8 / URL]`| Streams live video stream in video chat |
 | `/pause` | Pauses ongoing voice chat stream |
 | `/resume` | Resumes paused voice chat stream |
 | `/skip` or `/next` | Skips to the next queued track |
@@ -121,6 +139,14 @@ Videl utilizes a hybrid dual-engine bridge (`TelegramBridge`):
 | `/lyrics [song name]` | Fetches song lyrics |
 | `/search [query]` | Interactive YouTube search with 1-tap play/download buttons |
 | `/autodj [on/off]` | Toggles AI DJ / Smart AutoPlay endless radio fallback |
+
+### 🎨 Rich Formatting & Utilities
+| Command | Description |
+| :--- | :--- |
+| `/quote` or `/q` | Generates a high-res glassmorphic quote card image from replied message |
+| `/math [expr]` or `/calc` | Evaluates math formulas and formats with Unicode box tables |
+| `/table [data]` | Generates box-drawing ASCII/Unicode table |
+| `/card [heading]` | Creates a rich spotlight media card with headings, tables & quotes |
 
 ### 📢 Channel Streaming & WebApp
 | Command | Description |
@@ -342,10 +368,11 @@ Videl/
 │   │   ├── _utilities.py     # Formatters, logs & lyrics scrapers
 │   │   ├── button_style.py   # Bot API ButtonStyle (Primary, Danger, Success, Disabled)
 │   │   ├── rich_message.py   # Bot API 10.1+ RichMessage & Block builder
+│   │   ├── rich_ui.py        # Unicode Box Tables, Math & Rich Media Cards
 │   │   ├── Inter-Light.ttf   # UI Font
 │   │   └── Raleway-Bold.ttf  # Header Font
 │   ├── locales/              # 13 JSON Localization files
-│   └── plugins/              # 59 Modular commands & feature plugins
+│   └── plugins/              # 63 Modular commands & feature plugins
 │       ├── active.py         # Active voice chat tracker
 │       ├── admin.py          # Group moderation (ban, mute, kick, purge, pin, staff)
 │       ├── afk.py            # AFK status tracker
@@ -373,12 +400,15 @@ Videl/
 │       ├── loop.py           # Loop stream controller
 │       ├── lyrics.py         # Song lyrics scraper
 │       ├── maintenance.py    # Maintenance mode, assistants status & DB backup
+│       ├── math_calc.py      # Rich Math & Formula Evaluator with Unicode Tables
+│       ├── media_cards.py    # Rich Media Cards, Banners & Headings
 │       ├── misc.py           # Background timers & VC auto-leave
 │       ├── pause.py          # Pause stream
 │       ├── ping.py           # Health check & latency
-│       ├── play.py           # Audio & Video streamer
+│       ├── play.py           # Audio & Video streamer with /stream /vstream
 │       ├── playlists.py      # Personal & group playlists manager
 │       ├── queue.py          # Playlist queue viewer
+│       ├── quote.py          # Glassmorphic PIL Quote Card Generator
 │       ├── radio.py          # 24/7 Curated live radio stations
 │       ├── record.py         # Voice chat audio recording
 │       ├── replay.py         # Replay current song
@@ -398,6 +428,7 @@ Videl/
 │       ├── stats.py          # System performance stats
 │       ├── stop.py           # Stop playback
 │       ├── sudoers.py        # Sudo users management
+│       ├── tables.py         # Dynamic Unicode Box-Drawing Table Generator
 │       ├── tagall.py         # Batch mention group members
 │       ├── tts.py            # Text to speech synthesizer
 │       ├── variables.py      # Config & Environment variable inspector
