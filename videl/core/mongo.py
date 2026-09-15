@@ -45,6 +45,7 @@ class MongoDB:
         self.lang: Dict[int, str] = {}
         self.users: List[int] = []
         self.afk: Dict[int, Dict[str, Any]] = {}
+        self.gbanned: Dict[int, str] = {}
         self.locks: Dict[int, List[str]] = {}
         self.filters: Dict[int, Dict[str, str]] = {}
         self.notes: Dict[int, Dict[str, str]] = {}
@@ -102,6 +103,10 @@ class MongoDB:
     def locksdb(self):
         return self.db.locks if self.db is not None else None
 
+    @property
+    def gbandb(self):
+        return self.db.gban if self.db is not None else None
+
     async def connect(self) -> None:
         """Ping MongoDB and load cache."""
         try:
@@ -130,6 +135,9 @@ class MongoDB:
                 self.users.append(doc["user_id"])
             async for doc in self.bldb.find():
                 self.blacklisted.append(doc["chat_id"])
+            if self.gbandb is not None:
+                async for doc in self.gbandb.find():
+                    self.gbanned[doc["user_id"]] = doc.get("reason", "Global Ban")
             async for doc in self.langdb.find():
                 self.lang[doc["chat_id"]] = doc["lang"]
             async for doc in self.authdb.find():
@@ -193,6 +201,30 @@ class MongoDB:
     async def del_sudo(self, user_id: int) -> None:
         if self.sudodb is not None:
             await self.sudodb.delete_one({"user_id": user_id})
+
+    # Global Ban (GBan)
+    async def is_gbanned(self, user_id: int) -> bool:
+        return user_id in self.gbanned
+
+    async def get_gban_reason(self, user_id: int) -> str:
+        return self.gbanned.get(user_id, "No reason provided.")
+
+    async def add_gban(self, user_id: int, reason: str = "Global Ban") -> None:
+        self.gbanned[user_id] = reason
+        if self.gbandb is not None:
+            await self.gbandb.update_one(
+                {"user_id": user_id},
+                {"$set": {"user_id": user_id, "reason": reason}},
+                upsert=True,
+            )
+
+    async def del_gban(self, user_id: int) -> None:
+        self.gbanned.pop(user_id, None)
+        if self.gbandb is not None:
+            await self.gbandb.delete_one({"user_id": user_id})
+
+    async def get_gbanned(self) -> Dict[int, str]:
+        return dict(self.gbanned)
 
     # Blacklist management
     async def get_blacklisted(self) -> List[int]:

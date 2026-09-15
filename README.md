@@ -3,7 +3,7 @@
 # ⚡ Videl Music & Ultra Management Bot
 
 **Next-Generation Telegram Voice Chat Music Streamer & Complete Group Administration Suite**  
-*Engineered with Dual-Engine Architecture (Pyrogram/Kurigram MTProto + Aiogram 3.x Bot API 8.x/10.x), PyTgCalls, MongoDB, Real-time DSP Equalizers, and Auto-Healing Infrastructure.*
+*Engineered with Dual-Engine Architecture (Pyrogram/Kurigram MTProto + Aiogram 3.x Bot API 8.x/10.x), PyTgCalls, MongoDB, Real-time DSP Equalizers, In-Bot Session Generator, and Auto-Healing Infrastructure.*
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Telegram Bot API](https://img.shields.io/badge/Bot%20API-10.2%2B%20%7C%208.0%2B-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
@@ -43,6 +43,8 @@ Requested by Rahul 🤍
 - 🎧 **HD Audio & 1080p Video Streaming**: Crystal-clear Opus audio and fluid 60FPS video playback in Telegram Voice/Video chats with dynamic progress bars.
 - 🎛 **Real-Time DSP Equalizer & Effects**: Real-time audio filters (`/bassboost`, `/superbass`, `/nightcore`, `/slowed`, `/8d`, `/vaporwave`, `/karaoke`, `/surround`, `/eq`).
 - 🤖 **Smart AutoPlay / AI DJ**: Automated smart endless music recommendation fallback that keeps music playing smoothly when your queue finishes (`/autodj`).
+- 🔐 **In-Bot String Session Generator (Admin Only)**: Generate Pyrogram string sessions interactively within PM with OTP, 2FA support, and `/cancel` safeguard (`/generate_session`, `/genstring`).
+- 🚨 **Global Ban (GBan) System**: Cross-chat enforcement banning spammers and malicious users across all served groups with automated join-prevention (`/gban`, `/ungban`, `/gbanlist`).
 - ⭐️ **Telegram Stars Invoices & Tipping**: Native Telegram Stars donations (`/stars`, `/tip`, `/donate`) powered by Bot API 8.x/10.x Star currency (`XTR`).
 - ✨ **Animated Visual Message Effects**: Fire, Celebration, Heart, Lightning, and Confetti message effects (`/effect`, `/react`).
 - 📱 **Telegram Mini App & WebApp**: Interactive Mini App music controller and web dashboard (`/webapp`, `/miniapp`).
@@ -69,7 +71,7 @@ Requested by Rahul 🤍
 - 🏥 **Built-in HTTP Healthcheck Server**: Lightweight async web server on port 8080 (or `PORT`) for Docker, Render, Koyeb, Railway, and UptimeRobot uptime monitoring.
 - 🎨 **Dynamic Glassmorphic Thumbnail Engine**: Real-time PIL-generated album art cards with song metadata, waveforms, and time indicators.
 - 🌐 **13+ Languages Localization**: Built-in multi-language translation engine (English, Hindi, Spanish, French, Russian, Arabic, German, Japanese, Portuguese, Turkish, Punjabi, Burmese, Chinese).
-- 🚀 **Diagnostics & Maintenance**: Network speedtest (`/speedtest`), config viewer with masked credentials (`/config`, `/vars`), assistant cleanup (`/leaveall`), assistant status (`/assistants`), database backup (`/dbbackup`), maintenance toggle (`/maintenance`), global broadcast (`/broadcast`), and developer eval (`/eval`, `/sh`).
+- 🚀 **Diagnostics & Maintenance**: Network speedtest (`/speedtest`), system host diagnostics (`/sysinfo`), served chats/users exporter (`/servedchats`, `/servedusers`), config viewer with masked credentials (`/config`, `/vars`), assistant cleanup (`/leaveall`), assistant status (`/assistants`), database backup (`/dbbackup`), maintenance toggle (`/maintenance`), global broadcast (`/broadcast`), hot-reload (`/hotreload`), and developer eval (`/eval`, `/sh`).
 
 ---
 
@@ -197,9 +199,20 @@ Videl utilizes a hybrid dual-engine bridge (`TelegramBridge`):
 | `/authlist` | Shows list of authorized users in current chat |
 | `/reload` or `/admincache` | Refreshes administrator cache for the group |
 
-### ⚡ Sudo, Assistant & Developer Commands
+### ⚡ Sudo, Admin & Infrastructure Commands
 | Command | Description |
 | :--- | :--- |
+| `/generate_session` or `/genstring` | Interactive in-bot string session generator (Admin PM only) |
+| `/gban [reply/id] [reason]` | Globally bans a user across all served chats |
+| `/ungban [reply/id]` | Removes global ban from a user |
+| `/gbanlist` | Lists all globally banned user IDs |
+| `/sysinfo` or `/hostinfo` | Detailed CPU, RAM, Swap, Disk, and OS diagnostics |
+| `/servedchats` | Exports `.txt` file of all served group chats |
+| `/servedusers` | Exports `.txt` file of all served users |
+| `/botleave [chat_id]` | Forces bot to leave a specified chat |
+| `/announce [text]` | Broadcasts a pinned announcement across all active voice chats |
+| `/logger [on/off]` | Toggles real-time error logging to LOGGER_ID |
+| `/hotreload` or `/reloadplugins` | Hot-reloads all plugins dynamically without restarting bot |
 | `/ping` or `/alive` | Checks bot latency, PyTgCalls ping, uptime, and system RAM/CPU |
 | `/speedtest` or `/spt` | Runs network speedtest (download, upload, latency, ISP) |
 | `/stats` | Shows served chats, total users, assistants, and system diagnostics |
@@ -217,6 +230,7 @@ Videl utilizes a hybrid dual-engine bridge (`TelegramBridge`):
 | `/blacklist [chat_id / id]`| Blacklists group or user from using the bot |
 | `/unblacklist [chat_id]` | Removes target from blacklist |
 | `/addsudo` / `/rmsudo` | Adds or removes sudo users |
+| `/sudolist` | Lists all authorized sudoers |
 | `/logs` | Exports bot's runtime `log.txt` |
 | `/eval` or `/exec` | Executes async Python code snippet |
 | `/sh` or `/bash` | Runs shell commands on host machine |
@@ -281,7 +295,7 @@ bash start
 | `MONGO_URL` | **Yes** | MongoDB Connection URI from [MongoDB Atlas](https://cloud.mongodb.com) |
 | `LOGGER_ID` | **Yes** | Telegram Log Group / Channel ID (e.g. `-1001234567890`) |
 | `OWNER_ID` | **Yes** | Numeric User ID of the Bot Owner |
-| `SESSION` | **Yes** | Pyrogram / Kurigram String Session (from [@StringFatherBot](https://t.me/StringFatherBot)) |
+| `SESSION` | **Yes** | Pyrogram / Kurigram String Session (from [@StringFatherBot](https://t.me/StringFatherBot) or in-bot `/genstring`) |
 | `SESSION2` - `SESSION5` | No | Additional assistant string sessions for multi-assistant scaling |
 | `BOT_NAME` | No | Display name of the bot (Default: `Videl Music`) |
 | `PORT` | No | Port for HTTP healthcheck server (Default: `8080`) |
@@ -310,7 +324,7 @@ Videl/
 │   │   ├── calls.py          # PyTgCalls Voice & Video Stream Engine with AutoPlay
 │   │   ├── dir.py            # Runtime directory manager
 │   │   ├── lang.py           # Multi-language localization engine (13+ languages)
-│   │   ├── mongo.py          # High-speed cached MongoDB database
+│   │   ├── mongo.py          # High-speed cached MongoDB database with GBan
 │   │   ├── server.py         # Async HTTP Healthcheck server (Port 8080/PORT)
 │   │   ├── telegram.py       # Telegram native media downloader
 │   │   ├── userbot.py        # Multi-Assistant userbot manager (1-5)
@@ -331,7 +345,7 @@ Videl/
 │   │   ├── Inter-Light.ttf   # UI Font
 │   │   └── Raleway-Bold.ttf  # Header Font
 │   ├── locales/              # 13 JSON Localization files
-│   └── plugins/              # 56 Modular commands & feature plugins
+│   └── plugins/              # 59 Modular commands & feature plugins
 │       ├── active.py         # Active voice chat tracker
 │       ├── admin.py          # Group moderation (ban, mute, kick, purge, pin, staff)
 │       ├── afk.py            # AFK status tracker
@@ -351,6 +365,7 @@ Videl/
 │       ├── eval.py           # Python / Bash eval runner
 │       ├── filters_notes.py  # Group custom filters & saved notes
 │       ├── game.py           # Music Trivia Quiz game
+│       ├── gban.py           # Cross-chat Global Ban (GBan) enforcement system
 │       ├── iquery.py         # Telegram inline query search
 │       ├── language.py       # Multi-language switcher
 │       ├── leaveall.py       # Assistant leave inactive groups
@@ -371,6 +386,8 @@ Videl/
 │       ├── resume.py         # Resume stream
 │       ├── search.py         # Interactive YouTube search
 │       ├── seek.py           # Forward / Backward seek
+│       ├── server_admin.py   # Host diagnostics, chat exports, announcements, reload
+│       ├── session_gen.py    # In-bot interactive string session generator (Admin only)
 │       ├── shazam.py         # Shazam song recognition
 │       ├── shuffle.py        # Queue shuffle
 │       ├── skip.py           # Skip to next song
