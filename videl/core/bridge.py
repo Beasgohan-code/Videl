@@ -138,26 +138,95 @@ class TelegramBridge:
                 logger.error(f"Telegram Stars invoice error: {ex}")
         return None
 
-    async def send_rich(
+    async def send_paid_media(
         self,
         chat_id: Union[int, str],
-        rich_msg: Union[RichMessage, str],
-        reply_markup=None,
+        star_count: int,
+        media: List[Any],
+        caption: Optional[str] = None,
     ):
-        """Send rich structured block message."""
-        text = rich_msg.render_html() if isinstance(rich_msg, RichMessage) else rich_msg
+        """Send Paid Media locked behind Telegram Stars (Bot API 7.9+ / 8.x+)."""
         if self.aiogram_bot:
             try:
-                return await self.aiogram_bot.send_message(
+                return await self.aiogram_bot.send_paid_media(
                     chat_id=chat_id,
-                    text=text,
-                    reply_markup=reply_markup,
+                    star_count=star_count,
+                    media=media,
+                    caption=caption,
+                )
+            except Exception as ex:
+                logger.debug(f"Aiogram send_paid_media error: {ex}")
+        return None
+
+    async def send_quiz(
+        self,
+        chat_id: Union[int, str],
+        question: str,
+        options: List[str],
+        correct_option_id: int,
+        explanation: Optional[str] = None,
+    ):
+        """Send Quiz Poll with explanation (Bot API 8.x+)."""
+        if self.aiogram_bot:
+            try:
+                return await self.aiogram_bot.send_poll(
+                    chat_id=chat_id,
+                    question=question,
+                    options=options,
+                    type="quiz",
+                    correct_option_id=correct_option_id,
+                    explanation=explanation,
+                    is_anonymous=False,
+                )
+            except Exception as ex:
+                logger.debug(f"Aiogram send_quiz error: {ex}")
+
+        from videl import app
+        try:
+            return await app.send_poll(
+                chat_id=chat_id,
+                question=question,
+                options=options,
+                type=types.enums.PollType.QUIZ,
+                correct_option_id=correct_option_id,
+                explanation=explanation,
+                is_anonymous=False,
+            )
+        except Exception:
+            return None
+
+    async def send_poll(
+        self,
+        chat_id: Union[int, str],
+        question: str,
+        options: List[str],
+        allows_multiple_answers: bool = False,
+    ):
+        """Send standard voting poll."""
+        if self.aiogram_bot:
+            try:
+                return await self.aiogram_bot.send_poll(
+                    chat_id=chat_id,
+                    question=question,
+                    options=options,
+                    allows_multiple_answers=allows_multiple_answers,
+                    is_anonymous=False,
                 )
             except Exception:
                 pass
 
         from videl import app
-        return await app.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+        try:
+            return await app.send_poll(
+                chat_id=chat_id,
+                question=question,
+                options=options,
+                allows_multiple_answers=allows_multiple_answers,
+                is_anonymous=False,
+            )
+        except Exception:
+            return None
+
 
 
 bridge = TelegramBridge()
