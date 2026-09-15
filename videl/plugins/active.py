@@ -1,0 +1,40 @@
+# Copyright (c) 2026 Beasgohan-code
+# Licensed under the MIT License.
+# Videl Active Streams Plugin
+
+import os
+from pyrogram import filters, types
+from videl import app, db, lang, queue
+
+
+@app.on_message(filters.command(["ac", "activevc"]) & app.sudoers)
+@lang.language()
+async def _activevc(_, m: types.Message):
+    if not db.active_calls:
+        return await m.reply_text(m.lang["vc_empty"])
+
+    if m.command[0] == "ac":
+        return await m.reply_text(m.lang["vc_count"].format(len(db.active_calls)))
+
+    sent = await m.reply_text(m.lang["vc_fetching"])
+    text = ""
+
+    for i, chat in enumerate(db.active_calls):
+        playing = queue.get_current(chat)
+        song_title = playing.title[:25] if playing else "Unknown Track"
+        text += f"\n{i+1}. <code>{chat}</code>\n    ➜ {song_title}"
+
+    if len(text) < 4000:
+        return await sent.edit_text(m.lang["vc_list"] + text)
+
+    with open("activevc.txt", "w", encoding="utf-8") as f:
+        f.write(text)
+
+    await sent.edit_media(
+        media=types.InputMediaDocument(
+            media="activevc.txt",
+            caption=m.lang["vc_list"],
+        )
+    )
+    if os.path.exists("activevc.txt"):
+        os.remove("activevc.txt")

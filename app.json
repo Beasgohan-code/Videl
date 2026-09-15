@@ -1,0 +1,60 @@
+{
+    "name": "Videl Music Bot",
+    "description": "Next-Generation Telegram Voice Chat Music & Video Streaming Bot with modern Bot API features (ButtonStyle, RichMessage, High-Res Thumbnails, Multi-Assistants, 13+ Languages).",
+    "logo": "https://files.catbox.moe/zvziwk.jpg",
+    "keywords": ["telegram", "music", "bot", "voice-chat", "pytgcalls", "pyrogram", "kurigram", "videl", "streamer"],
+    "repository": "https://github.com/Beasgohan-code/Videl",
+    "stack": "container",
+    "env": {
+        "API_ID": {
+            "description": "Your API ID from https://my.telegram.org",
+            "value": "",
+            "required": true
+        },
+        "API_HASH": {
+            "description": "Your API HASH from https://my.telegram.org",
+            "value": "",
+            "required": true
+        },
+        "BOT_TOKEN": {
+            "description": "Telegram Bot Token from @BotFather",
+            "value": "",
+            "required": true
+        },
+        "MONGO_URL": {
+            "description": "MongoDB connection URI from https://cloud.mongodb.com",
+            "value": "",
+            "required": true
+        },
+        "LOGGER_ID": {
+            "description": "Log group/channel ID (e.g. -1001234567890) where the bot is admin.",
+            "value": "",
+            "required": true
+        },
+        "OWNER_ID": {
+            "description": "Numeric Telegram User ID of the bot owner.",
+            "value": "",
+            "required": true
+        },
+        "SESSION": {
+            "description": "Pyrogram String Session from @StringFatherBot.",
+            "value": "",
+            "required": true
+        },
+        "BOT_NAME": {
+            "description": "Display name of your bot.",
+            "value": "Videl Music",
+            "required": false
+        },
+        "SUPPORT_CHANNEL": {
+            "description": "Support channel link.",
+            "value": "https://t.me/BeasgohanUpdates",
+            "required": false
+        },
+        "SUPPORT_CHAT": {
+            "description": "Support group link.",
+            "value": "https://t.me/BeasgohanSupport",
+            "required": false
+        }
+    }
+}
