@@ -22,10 +22,11 @@ logging.getLogger("ntgcalls").setLevel(logging.CRITICAL)
 logging.getLogger("pymongo").setLevel(logging.ERROR)
 logging.getLogger("motor").setLevel(logging.ERROR)
 logging.getLogger("pyrogram").setLevel(logging.ERROR)
+logging.getLogger("aiogram").setLevel(logging.ERROR)
 logging.getLogger("pytgcalls").setLevel(logging.ERROR)
 
 logger = logging.getLogger("Videl")
-__version__ = "3.5.0"
+__version__ = "3.8.0"
 
 from config import Config
 
@@ -45,6 +46,8 @@ db = MongoDB()
 from videl.core.bot import Bot
 app = Bot()
 
+from videl.core.bridge import bridge
+
 from videl.core.userbot import Userbot
 userbot = Userbot()
 
@@ -60,6 +63,8 @@ thumb = Thumbnail()
 
 from videl.core.calls import TgCall
 anon = TgCall()
+calls = anon
+tgcalls = anon
 
 
 async def stop() -> None:
@@ -73,6 +78,7 @@ async def stop() -> None:
 
     await app.exit()
     await userbot.exit()
+    await bridge.close()
     await db.close()
     await thumb.close()
     if yt.api and yt.api.session:

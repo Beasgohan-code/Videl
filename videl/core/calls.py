@@ -65,6 +65,7 @@ def format_player_caption(media: Union[Media, Track], played_sec: int = 1) -> st
 class TgCall(PyTgCalls):
     def __init__(self):
         self.clients: List[PyTgCalls] = []
+        self.last_played = {}
 
     async def pause(self, chat_id: int) -> bool:
         client = await db.get_assistant(chat_id)
@@ -145,6 +146,7 @@ class TgCall(PyTgCalls):
             )
             if not seek_time:
                 media.time = 1
+                self.last_played[chat_id] = media.title
                 await db.add_call(chat_id)
                 text = format_player_caption(media, played_sec=1)
                 q_len = max(0, len(queue.get_queue(chat_id)) - 1)
@@ -221,6 +223,19 @@ class TgCall(PyTgCalls):
                 media.message_id = 0
         except Exception:
             pass
+
+        # Smart AutoPlay / AI DJ Fallback when queue ends
+        if not media:
+            try:
+                from videl.plugins.autodj import autodj_enabled, fetch_recommended_track
+                last_title = self.last_played.get(chat_id)
+                if autodj_enabled.get(chat_id) and last_title:
+                    rec = await fetch_recommended_track(chat_id, last_title)
+                    if rec:
+                        rec.user = "🎧 Smart AutoPlay"
+                        media = rec
+            except Exception:
+                pass
 
         if not media:
             return await self.stop(chat_id)

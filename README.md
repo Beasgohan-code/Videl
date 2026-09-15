@@ -3,10 +3,10 @@
 # ⚡ Videl Music & Ultra Management Bot
 
 **Next-Generation Telegram Voice Chat Music Streamer & Complete Group Administration Suite**  
-*Engineered with Pyrogram / Kurigram, PyTgCalls, MongoDB, and modern Telegram Bot API features.*
+*Engineered with Dual-Engine Architecture (Pyrogram/Kurigram MTProto + Aiogram 3.x Bot API 8.x/10.x), PyTgCalls, MongoDB, and Dynamic Equalizer DSP.*
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Telegram Bot API](https://img.shields.io/badge/Bot%20API-10.1%2B%20%7C%208.0%2B-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
+[![Telegram Bot API](https://img.shields.io/badge/Bot%20API-10.2%2B%20%7C%208.0%2B-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
 [![PyTgCalls](https://img.shields.io/badge/PyTgCalls-v2.3%2B-FF6B6B?style=for-the-badge)](https://github.com/pytgcalls/pytgcalls)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
@@ -14,7 +14,7 @@
   <img src="https://files.catbox.moe/zvziwk.jpg" alt="Videl Music Banner" width="650" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
 </p>
 
-[**Player UI Showcase**](#-sleek-player-ui) • [**Features**](#-features) • [**Bot API Innovations**](#-modern-bot-api-features) • [**Commands**](#-commands) • [**Deploy Guide**](#-deployment) • [**Configuration**](#-environment-variables)
+[**Player UI Showcase**](#-sleek-player-ui) • [**Features**](#-highlights--capabilities) • [**Bot API 8.x/10.x Innovations**](#-modern-bot-api-innovations) • [**Commands**](#-commands) • [**Deploy Guide**](#-deployment) • [**Configuration**](#-environment-variables)
 
 </div>
 
@@ -42,6 +42,12 @@ Requested by Rahul 🤍
 
 - 🎧 **HD Audio & 1080p Video Streaming**: Crystal-clear Opus audio and fluid 60FPS video playback in Telegram Voice/Video chats with dynamic progress bars.
 - 🎛 **Real-Time DSP Equalizer & Effects**: Real-time audio filters (`/bassboost`, `/superbass`, `/nightcore`, `/slowed`, `/8d`, `/vaporwave`, `/eq`).
+- 🤖 **Smart AutoPlay / AI DJ**: Automated smart endless music recommendation fallback that keeps music playing smoothly when your queue finishes (`/autodj`).
+- ⭐️ **Telegram Stars Invoices & Tipping**: Native Telegram Stars donations (`/stars`, `/tip`, `/donate`) powered by Bot API 8.x/10.x Star currency (`XTR`).
+- ✨ **Animated Visual Message Effects**: Fire, Celebration, Heart, Lightning, and Confetti message effects (`/effect`, `/react`).
+- 📱 **Telegram Mini App & WebApp**: Interactive Mini App music controller and web dashboard (`/webapp`, `/miniapp`).
+- 📢 **Linked Channel Streaming**: Play music in linked broadcast channels seamlessly (`/cplay`, `/cvplay`, `/cpause`, `/cresume`, `/cstop`, `/cqueue`, `/channel`).
+- 🔄 **Assistant Live Auto-Bio Sync**: Dynamically updates assistant Telegram profile bios with real-time streaming metadata (`/autobio`).
 - 📻 **24/7 Curated Live Radio**: Stream Lofi 24/7, Synthwave, Chillhop, Anime OST, EDM, Rock, Pop, and Jazz stations with `/radio`.
 - 🔍 **Shazam Audio Identification**: Reply to any voice note or video with `/shazam` to identify track name, artist, album, and get 1-tap stream/download buttons.
 - 🎙 **Voice Chat Recording**: Record ongoing voice chats to high-bitrate MP3 files with `/record` and `/stoprecord`.
@@ -63,22 +69,26 @@ Requested by Rahul 🤍
 
 ---
 
-## 💎 Modern Bot API Features
+## 💎 Modern Bot API Innovations
 
-### 1. `ButtonStyle` Support
+### 1. Dual-Engine Architecture
+Videl utilizes a hybrid dual-engine bridge (`TelegramBridge`):
+- **Kurigram / Pyrogram MTProto**: Powers low-latency voice chat streaming, high-speed file transfers, and userbot multi-assistant clusters.
+- **Aiogram 3.31+ Bot API Engine**: Dispatches modern Bot API 8.x / 10.x endpoints including `message_effect_id`, `send_invoice` (Stars `XTR`), `set_message_reaction`, and HTML5 Mini App handshakes.
+
+### 2. `ButtonStyle` Support
 - **`primary`** (Accent highlighted buttons: *Play*, *Resume*, *Queue Counter*, *Copy Link*)
 - **`danger`** (Red alert buttons: *Stop*, *Cancel Download*, *Close*, *Delete*)
 - **`success`** (Green confirmation buttons: *Enabled Status*, *Selected Language*)
 - **`disabled`** (Disabled/non-clickable buttons for status and placeholders)
 - **`default`** (Neutral navigation & controls)
 
-### 2. `RichMessage` & Structured Blocks
+### 3. `RichMessage` & Structured Blocks
 - **Blockquote cards**: `<blockquote expandable>` for long playlists, staff lists, and lyrics.
 - **Rich Markdown Formatting**: Pull quotes, headers, code blocks, and dynamic streaming drafts.
-- **Rich Draft Streaming**: Real-time progress bar ticker updates without rate-limit jitter.
 
-### 3. `copy_text` 1-Tap Copy Buttons
-- Quick-copy YouTube URLs, track IDs, user IDs, and chat IDs straight into the clipboard with one tap.
+### 4. `copy_text` 1-Tap Copy Buttons
+- Quick-copy YouTube URLs, track IDs, user IDs, and chat IDs straight into clipboard with one tap.
 
 ---
 
@@ -104,6 +114,22 @@ Requested by Rahul 🤍
 | `/queue` or `/playing` | Displays currently playing track and playlist queue |
 | `/lyrics [song name]` | Fetches song lyrics |
 | `/search [query]` | Interactive YouTube search with 1-tap play/download buttons |
+| `/autodj [on/off]` | Toggles AI DJ / Smart AutoPlay endless radio fallback |
+
+### 📢 Channel Streaming & WebApp
+| Command | Description |
+| :--- | :--- |
+| `/channel [@username/id]` | Links a channel to the current group |
+| `/cplay [query / URL]` | Streams music in the linked channel's voice chat |
+| `/cvplay [query / URL]` | Streams video in the linked channel's video chat |
+| `/cpause` / `/cresume` | Pauses or resumes linked channel playback |
+| `/cstop` | Stops stream in linked channel |
+| `/cqueue` | Displays linked channel queue |
+| `/webapp` or `/miniapp` | Launches interactive Telegram Mini App player |
+| `/stars [amount]` or `/tip` | Sends Telegram Stars donation invoice (`XTR`) |
+| `/effect [fire/heart/..] [text]` | Sends message with animated Bot API visual effect |
+| `/react [emoji]` | Reacts to message with modern emoji reaction |
+| `/autobio [on/off]` | Toggles assistant real-time profile bio sync |
 
 ### 🎛 Audio Equalizer, Radio & Special Media
 | Command | Description |
@@ -268,7 +294,8 @@ Videl/
 │   ├── __main__.py           # Execution entrypoint & lifecycle
 │   ├── core/
 │   │   ├── bot.py            # Custom Telegram Bot Client
-│   │   ├── calls.py          # PyTgCalls Voice & Video Stream Engine
+│   │   ├── bridge.py         # Dual-Engine Telegram Bridge (MTProto + Bot API 10.x)
+│   │   ├── calls.py          # PyTgCalls Voice & Video Stream Engine with AutoPlay
 │   │   ├── dir.py            # Runtime directory manager
 │   │   ├── lang.py           # Multi-language localization engine (13+ languages)
 │   │   ├── mongo.py          # High-speed cached MongoDB database
@@ -291,17 +318,21 @@ Videl/
 │   │   ├── Inter-Light.ttf   # UI Font
 │   │   └── Raleway-Bold.ttf  # Header Font
 │   ├── locales/              # 13 JSON Localization files
-│   └── plugins/              # 46 Modular commands & feature plugins
+│   └── plugins/              # 52 Modular commands & feature plugins
 │       ├── active.py         # Active voice chat tracker
 │       ├── admin.py          # Group moderation (ban, mute, kick, purge, pin, staff)
 │       ├── afk.py            # AFK status tracker
 │       ├── antiflood.py      # Anti-flood spam protection
 │       ├── audio_fx.py       # Real-time DSP Equalizer & Audio FX
 │       ├── auth.py           # Auth users manager
+│       ├── autobio.py        # Assistant Auto-Bio real-time profile updater
+│       ├── autodj.py         # Smart AutoPlay / AI DJ endless radio recommendation
 │       ├── blacklist.py      # Blacklist / Whitelist manager
 │       ├── broadcast.py      # Global broadcast manager
 │       ├── callbacks.py      # Callback query router
+│       ├── channel.py        # Channel Streaming (/cplay, /cpause, /cresume, /cstop)
 │       ├── downloader.py     # YouTube Video & MP3 Song Downloader
+│       ├── effects.py        # Bot API 8.x/10.x visual message effects & reactions
 │       ├── eval.py           # Python / Bash eval runner
 │       ├── filters_notes.py  # Group custom filters & saved notes
 │       ├── game.py           # Music Trivia Quiz game
@@ -330,6 +361,7 @@ Videl/
 │       ├── skip.py           # Skip to next song
 │       ├── speed.py          # Playback speed controller
 │       ├── speedtest.py      # Network speed diagnostics
+│       ├── stars.py          # Telegram Stars tipping & invoices
 │       ├── start.py          # Start & help menu
 │       ├── stats.py          # System performance stats
 │       ├── stop.py           # Stop playback
@@ -337,6 +369,7 @@ Videl/
 │       ├── tagall.py         # Batch mention group members
 │       ├── tts.py            # Text to speech synthesizer
 │       ├── volume.py         # Audio volume controller
+│       ├── webapp.py         # Interactive HTML5 Mini App music controller
 │       └── welcome.py        # Custom welcome & clean service
 ├── config.py                 # Central configuration parser
 ├── sample.env                # Environment variables template
