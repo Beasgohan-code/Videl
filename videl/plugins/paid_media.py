@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 # Videl Bot API 8.x/10.x Star Paid Media Plugin
 
+import os
 from pyrogram import filters, types
 from videl import app, bridge
 from videl.helpers.button_style import styled_button, ButtonStyle
@@ -11,7 +12,7 @@ from videl.helpers.button_style import styled_button, ButtonStyle
 async def paid_media_handler(_, message: types.Message):
     if not message.reply_to_message or (not message.reply_to_message.photo and not message.reply_to_message.video):
         return await message.reply_text(
-            "💎 <b><u>Bot API 8.x+ Telegram Star Paid Media</u></b>\n\n"
+            "💎 <b><u>Bot API 8.x/10.x Telegram Star Paid Media</u></b>\n\n"
             "<b>Usage:</b> Reply to a photo or video with <code>/paidmedia [Star Price] [Optional Caption]</code>\n"
             "<i>Example:</i> <code>/paidmedia 10 Exclusive VIP Live Concert Recording! ⭐️</code>",
             quote=True,
@@ -25,27 +26,48 @@ async def paid_media_handler(_, message: types.Message):
     if len(message.command) > 2:
         caption = message.text.split(None, 2)[2]
 
-    # Send Star Invoiced Media Card with ButtonStyle
-    keyboard = types.InlineKeyboardMarkup([
-        [
-            styled_button(text=f"⭐️ Unlock for {star_count} Stars", callback_data=f"stars", style=ButtonStyle.PRIMARY),
-            styled_button(text="🗑 Close", callback_data="help close", style=ButtonStyle.DANGER),
-        ]
-    ])
+    # Try native Bot API 10.x send_paid_media
+    file_path = await message.reply_to_message.download()
+    sent_paid = False
+    if file_path:
+        try:
+            res = await bridge.send_paid_media(
+                chat_id=message.chat.id,
+                star_count=star_count,
+                media_paths=[file_path],
+                caption=caption,
+            )
+            if res:
+                sent_paid = True
+        except Exception:
+            pass
+        finally:
+            if os.path.exists(file_path):
+                os.remove(file_path)
 
-    if message.reply_to_message.photo:
-        await app.send_photo(
-            chat_id=message.chat.id,
-            photo=message.reply_to_message.photo.file_id,
-            caption=f"⭐️ <b><u>Telegram Stars Paid Content</u></b>\n\n{caption}\n\n<b>Price:</b> <code>{star_count} ⭐️ Stars</code>",
-            reply_markup=keyboard,
-            has_spoiler=True,
-        )
-    elif message.reply_to_message.video:
-        await app.send_video(
-            chat_id=message.chat.id,
-            video=message.reply_to_message.video.file_id,
-            caption=f"⭐️ <b><u>Telegram Stars Paid Content</u></b>\n\n{caption}\n\n<b>Price:</b> <code>{star_count} ⭐️ Stars</code>",
-            reply_markup=keyboard,
-            has_spoiler=True,
-        )
+    if not sent_paid:
+        # Fallback to spoiler photo/video with Star invoice action
+        keyboard = types.InlineKeyboardMarkup([
+            [
+                styled_button(text=f"⭐️ Unlock for {star_count} Stars", callback_data=f"stars", style=ButtonStyle.PRIMARY),
+                styled_button(text="🗑 Close", callback_data="help close", style=ButtonStyle.DANGER),
+            ]
+        ])
+
+        if message.reply_to_message.photo:
+            await app.send_photo(
+                chat_id=message.chat.id,
+                photo=message.reply_to_message.photo.file_id,
+                caption=f"⭐️ <b><u>Telegram Stars Paid Content</u></b>\n\n{caption}\n\n<b>Price:</b> <code>{star_count} ⭐️ Stars</code>",
+                reply_markup=keyboard,
+                has_spoiler=True,
+            )
+        elif message.reply_to_message.video:
+            await app.send_video(
+                chat_id=message.chat.id,
+                video=message.reply_to_message.video.file_id,
+                caption=f"⭐️ <b><u>Telegram Stars Paid Content</u></b>\n\n{caption}\n\n<b>Price:</b> <code>{star_count} ⭐️ Stars</code>",
+                reply_markup=keyboard,
+                has_spoiler=True,
+            )
+
