@@ -62,7 +62,7 @@ async def track_time():
 
 async def update_timer(length=12):
     while True:
-        await asyncio.sleep(7)
+        await asyncio.sleep(8)
         for chat_id in list(db.active_calls):
             if not await db.playing(chat_id):
                 continue
@@ -76,35 +76,58 @@ async def update_timer(length=12):
 
                 played = media.time
                 remaining = max(0, duration - played)
-                pos = min(int((played / duration) * length), length - 1)
-                bar = "═" * pos + "🔘" + "═" * (length - pos - 1)
 
                 if remaining <= 30:
                     nxt = queue.get_next(chat_id, check=True)
                     if nxt and not nxt.file_path:
                         nxt.file_path = await yt.download(nxt.id, video=nxt.video)
 
-                if remaining < 10:
-                    remove = True
-                    timer_str = None
-                else:
-                    if config.THUMB_GEN:
-                        timer_str = f"{time.strftime('%M:%S', time.gmtime(played))} ┃ {bar} ┃ -{time.strftime('%M:%S', time.gmtime(remaining))}"
-                    else:
-                        timer_str = None
-                    remove = False
+                remove = bool(remaining < 10)
 
-                if not timer_str and not remove:
-                    continue
+                # Format updated caption matching photo
+                ratio = min(max(played / duration, 0.0), 1.0)
+                pos = min(int(ratio * length), length - 1)
+                bar = "─" * pos + "🔘" + "─" * (length - pos - 1)
+                played_str = time.strftime("%M:%S", time.gmtime(played))
+                total_str = media.duration or time.strftime("%M:%S", time.gmtime(duration))
+
+                m_type = "VIDEO" if media.video else "AUDIO"
+                channel = getattr(media, "channel_name", "") or "Videl Stream"
+                user_mention = media.user or "Anonymous"
+
+                new_caption = (
+                    f"<b><a href='{media.url}'>{media.title}</a></b>\n"
+                    f"{channel}\n"
+                    f"<i>{m_type} • {total_str}</i>\n"
+                    f"Requested by {user_mention} 🤍\n\n"
+                    f"<code>{played_str} {bar} {total_str}</code>"
+                )
 
                 is_p = await db.playing(chat_id)
-                await app.edit_message_reply_markup(
+                q_len = max(0, len(queue.get_queue(chat_id)) - 1)
+                keyboard = buttons.controls(
                     chat_id=chat_id,
-                    message_id=message_id,
-                    reply_markup=buttons.controls(
-                        chat_id=chat_id, timer=timer_str, remove=remove, is_playing=is_p
-                    ),
+                    remove=remove,
+                    is_playing=is_p,
+                    queue_count=q_len,
+                    song_url=media.url,
                 )
+
+                try:
+                    await app.edit_message_caption(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        caption=new_caption,
+                        reply_markup=keyboard,
+                    )
+                except errors.MessageNotModified:
+                    pass
+                except Exception:
+                    await app.edit_message_reply_markup(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        reply_markup=keyboard,
+                    )
             except asyncio.CancelledError:
                 raise
             except Exception:

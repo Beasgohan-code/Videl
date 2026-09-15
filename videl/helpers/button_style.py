@@ -25,19 +25,20 @@ except ImportError:
 
 class ButtonStyle(str, Enum):
     """
-    Represents Telegram Bot API button styles (primary, danger, success, default).
-    Supported in Telegram Bot API 8.0+ / 10.0+ / Kurigram.
+    Represents Telegram Bot API button styles (primary, danger, success, default, disabled).
+    Supported in Telegram Bot API 8.0+ / 10.x / Kurigram.
     """
     PRIMARY = "primary"
     DANGER = "danger"
     SUCCESS = "success"
     DEFAULT = "default"
+    DISABLED = "disabled"
 
 
 class StyledInlineKeyboardButton(InlineKeyboardButton):
     """
     Enhanced InlineKeyboardButton supporting:
-    - style (primary, danger, success, default)
+    - style (primary, danger, success, default, disabled)
     - copy_text (1-tap clipboard copy)
     - icon_custom_emoji_id (Telegram Custom Emoji icon)
     - web_app (Telegram Mini App)
@@ -61,7 +62,7 @@ class StyledInlineKeyboardButton(InlineKeyboardButton):
         
         super().__init__(
             text=text,
-            callback_data=callback_data,
+            callback_data=callback_data if callback_data is not None else ("noop" if style_val == "disabled" else None),
             url=url,
             web_app=web_app,
             user_id=user_id,
@@ -117,6 +118,15 @@ def styled_button(
         web_app=web_app,
         style=style,
         icon_custom_emoji_id=icon_emoji_id,
+    )
+
+
+def disabled_button(text: str) -> StyledInlineKeyboardButton:
+    """Helper for disabled/inactive styled button."""
+    return StyledInlineKeyboardButton(
+        text=text,
+        callback_data="noop",
+        style=ButtonStyle.DISABLED,
     )
 
 

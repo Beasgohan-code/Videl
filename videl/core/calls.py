@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 # Videl PyTgCalls Voice & Video Stream Engine
 
+import time
 from typing import List, Optional, Union
 from ntgcalls import (
     ConnectionNotFound,
@@ -30,6 +31,34 @@ from videl import (
     yt,
 )
 from videl.helpers._dataclass import Media, Track
+
+
+def format_player_caption(media: Union[Media, Track], played_sec: int = 1) -> str:
+    total_sec = media.duration_sec or 0
+    bar_len = 12
+    if total_sec > 0:
+        ratio = min(max(played_sec / total_sec, 0.0), 1.0)
+        pos = min(int(ratio * bar_len), bar_len - 1)
+        progress_bar = "─" * pos + "🔘" + "─" * (bar_len - pos - 1)
+        played_str = time.strftime("%M:%S", time.gmtime(played_sec))
+        total_str = media.duration or time.strftime("%M:%S", time.gmtime(total_sec))
+    else:
+        progress_bar = "🔘───────────"
+        played_str = "0:01"
+        total_str = "Live"
+
+    m_type = "VIDEO" if media.video else "AUDIO"
+    channel = getattr(media, "channel_name", "") or "Videl Stream"
+    user_mention = media.user or "Anonymous"
+
+    caption = (
+        f"<b><a href='{media.url}'>{media.title}</a></b>\n"
+        f"{channel}\n"
+        f"<i>{m_type} • {media.duration or 'Live'}</i>\n"
+        f"Requested by {user_mention} 🤍\n\n"
+        f"<code>{played_str} {progress_bar} {total_str}</code>"
+    )
+    return caption
 
 
 class TgCall(PyTgCalls):
@@ -107,13 +136,14 @@ class TgCall(PyTgCalls):
             if not seek_time:
                 media.time = 1
                 await db.add_call(chat_id)
-                text = _lang["play_media"].format(
-                    media.url,
-                    media.title,
-                    media.duration,
-                    media.user,
+                text = format_player_caption(media, played_sec=1)
+                q_len = max(0, len(queue.get_queue(chat_id)) - 1)
+                keyboard = buttons.controls(
+                    chat_id,
+                    queue_count=q_len,
+                    song_url=media.url,
+                    is_playing=True,
                 )
-                keyboard = buttons.controls(chat_id)
                 try:
                     if _thumb:
                         await message.edit_media(

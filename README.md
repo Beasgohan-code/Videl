@@ -1,9 +1,9 @@
 <div align="center">
 
-# ⚡ Videl Music Bot
+# ⚡ Videl Music & Management Bot
 
-**Next-Generation Telegram Group Voice Chat Music & Video Streamer**  
-*Powered by Pyrogram / Kurigram, PyTgCalls, MongoDB, and modern Telegram Bot API features.*
+**Next-Generation Telegram Voice Chat Music Streamer & Group Management Suite**  
+*Engineered with Pyrogram / Kurigram, PyTgCalls, MongoDB, and modern Telegram Bot API features.*
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Telegram Bot API](https://img.shields.io/badge/Bot%20API-10.1%2B%20%7C%208.0%2B-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
@@ -14,58 +14,66 @@
   <img src="https://files.catbox.moe/zvziwk.jpg" alt="Videl Music Banner" width="650" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
 </p>
 
-[**Features**](#-features) • [**Bot API Innovations**](#-modern-bot-api-features) • [**Commands**](#-commands) • [**Deploy Guide**](#-deployment) • [**Configuration**](#-environment-variables)
+[**Player UI Showcase**](#-sleek-player-ui) • [**Features**](#-features) • [**Bot API Innovations**](#-modern-bot-api-features) • [**Commands**](#-commands) • [**Deploy Guide**](#-deployment) • [**Configuration**](#-environment-variables)
 
 </div>
 
 ---
 
-## 🌟 Highlights
+## 📸 Sleek Player UI
 
-**Videl** is a modern, high-performance Telegram music bot designed for groups and channels. Built with an asynchronous core, it provides ultra-low latency voice chat playback, high-definition video streaming, dynamic glassmorphic album art generation, multi-assistant load balancing, and modern Telegram Bot API features like **`ButtonStyle`** (colored primary/danger action buttons), **`RichMessage`** structured block formatting, and **`copy_text`** instant clipboard actions.
+```
+Britney Spears - Criminal (Lyrics)
+7clouds
+AUDIO • 3:44
+Requested by Rahul 🤍
+
+2:32 ─────🔘──────── 3:44
+
+[ ↶ Replay ]   [ II Pause ]   [ » Skip ]
+        [ ≡ Queue • 3 ]
+[ 🔊 Volume ]  [ 🔀 Shuffle ]  [ 📜 Lyrics ]  [ ⚡ Speed ]
+     [ ❐ Copy Link ]   [ 🗑 Close ]
+```
 
 ---
 
-## 🚀 Features
+## 🌟 Highlights & Capabilities
 
-- 🎧 **HD Audio & 1080p Video Streaming**: Crystal-clear Opus audio and fluid 60FPS video playback in Telegram Voice/Video chats.
-- ⚡ **Multi-Assistant Load Balancer**: Support for up to 5 assistant accounts (`SESSION1` to `SESSION5`) with automated round-robin routing and seamless failover.
+- 🎧 **HD Audio & 1080p Video Streaming**: Crystal-clear Opus audio and fluid 60FPS video playback in Telegram Voice/Video chats with dynamic progress bars.
+- ⚡ **Multi-Assistant Load Balancer**: Multi-assistant clustering (`SESSION1` to `SESSION5`) with automated round-robin routing and seamless failover.
+- 📥 **High-Speed Video & Song Downloader**: Download 320kbps MP3s and 1080p/720p MP4 videos directly to Telegram chats via `/song`, `/video`, and `/download`.
+- 🛡 **Full Group Moderation Suite**: Fast admin commands (`/ban`, `/tban`, `/unban`, `/mute`, `/tmute`, `/unmute`, `/kick`, `/pin`, `/purge`, `/del`, `/staff`, `/id`, `/info`).
 - 🎨 **Dynamic Glassmorphic Thumbnail Engine**: Real-time PIL-generated album art cards with song metadata, waveforms, and time indicators.
 - 🌐 **13+ Languages Localization**: Built-in multi-language translation engine (English, Hindi, Spanish, French, Russian, Arabic, German, Japanese, Portuguese, Turkish, Punjabi, Burmese, Chinese).
 - 🔄 **Audio Controls & FX**: Volume control (`1-200%`), speed adjustment (`0.75x-2.0x`), real-time loop modes, playlist shuffling, seeking forward/backward, and song replay.
-- 📜 **Instant Lyrics Integration**: Scrapes and renders clean expandable lyrics cards right in chat.
+- 📜 **Instant Lyrics Scraper**: Real-time expandable lyrics cards in chat.
 - 📱 **Universal Platform Support**:
   - **YouTube & YouTube Music** (Single tracks, search queries, playlists, shorts, live streams)
   - **Spotify** (Tracks, albums, public playlists)
   - **Apple Music** & **SoundCloud**
   - **Direct URLs** (MP3, M3U8, MP4, AAC, FLAC streams)
-  - **Telegram Files** (Native audio, voice notes, video files, and video notes with live download progress)
-- 🔒 **Comprehensive Group & Admin Controls**:
-  - Play Mode toggle (Admins-only vs Everyone)
-  - Clean Mode / Command auto-deletion
-  - Authorized Users system (`/auth`, `/unauth`, `/authlist`)
-  - Smart Assistant auto-invite and join-request approvals
-  - Auto-leave on empty voice chats (`AUTO_LEAVE`, `AUTO_END`)
-  - Global broadcast engine (`/broadcast`) with pin, copy, and forward modes
+  - **Telegram Files** (Native audio, voice notes, video files with live download progress)
+- 🚀 **Diagnostics & Maintenance**: Network speedtest (`/speedtest`), assistant cleanup (`/leaveall`), interactive search (`/search`), global broadcast (`/broadcast`), and developer eval (`/eval`, `/sh`).
 
 ---
 
 ## 💎 Modern Bot API Features
 
 ### 1. `ButtonStyle` Support
-Videl leverages Telegram Bot API 8.0+ / 10.x button styling:
-- **`primary`** (Accent highlighted buttons: *Play*, *Resume*, *Volume*, *Quick Actions*)
+- **`primary`** (Accent highlighted buttons: *Play*, *Resume*, *Queue Counter*, *Copy Link*)
 - **`danger`** (Red alert buttons: *Stop*, *Cancel Download*, *Close*, *Delete*)
 - **`success`** (Green confirmation buttons: *Enabled Status*, *Selected Language*)
-- **`default`** (Neutral navigation & info buttons)
+- **`disabled`** (Disabled/non-clickable buttons for status and placeholders)
+- **`default`** (Neutral navigation & controls)
 
 ### 2. `RichMessage` & Structured Blocks
-- **Blockquote cards**: `<blockquote expandable>` for long playlists and lyrics.
+- **Blockquote cards**: `<blockquote expandable>` for long playlists, staff lists, and lyrics.
 - **Rich Markdown Formatting**: Pull quotes, headers, code blocks, and dynamic streaming drafts.
 - **Rich Draft Streaming**: Real-time progress bar ticker updates without rate-limit jitter.
 
 ### 3. `copy_text` 1-Tap Copy Buttons
-- Quick-copy YouTube URLs, track IDs, and join links straight into the user's clipboard with one tap.
+- Quick-copy YouTube URLs, track IDs, user IDs, and chat IDs straight into the clipboard with one tap.
 
 ---
 
@@ -90,14 +98,32 @@ Videl leverages Telegram Bot API 8.0+ / 10.x button styling:
 | `/shuffle` | Randomly shuffles the upcoming playlist queue |
 | `/queue` or `/playing` | Displays currently playing track and playlist queue |
 | `/lyrics [song name]` | Fetches song lyrics |
+| `/search [query]` | Interactive YouTube search with 1-tap play/download buttons |
 
-### 👑 Group Management & Settings
+### 📥 Video & Audio Downloader
 | Command | Description |
 | :--- | :--- |
+| `/song [name / URL]` | Downloads high quality 320kbps MP3 audio file to chat |
+| `/video [name / URL]` | Downloads HD 720p/1080p MP4 video file to chat |
+| `/download [name / URL]`| Fast multi-format media downloader |
+
+### 🛡 Group Management & Moderation
+| Command | Description |
+| :--- | :--- |
+| `/ban [reply / id] [time/reason]` | Bans user from group (supports temp bans e.g. `10m`, `1d`) |
+| `/tban [reply / id] [time]` | Temporarily bans a user |
+| `/unban [reply / id]` | Unbans a user |
+| `/mute [reply / id] [time]` | Mutes a user (supports temp mutes) |
+| `/unmute [reply / id]` | Unmutes a user |
+| `/kick [reply / id]` | Kicks a user from the group |
+| `/pin` / `/unpin` / `/unpinall` | Pins or unpins messages |
+| `/purge` / `/del` | Fast message deleter & purger |
+| `/staff` or `/adminlist` | Displays group staff & admin roster |
+| `/id` or `/info` | Displays user and chat ID card with 1-tap copy buttons |
 | `/settings` or `/playmode` | Interactive button settings panel (Playmode, Cleanmode, Language) |
 | `/lang` or `/language` | Opens 13-language selector |
-| `/auth [reply / user_id]` | Authorizes a non-admin user to control playback |
-| `/unauth [reply / user_id]` | Removes a user from authorized list |
+| `/auth [reply / id]` | Authorizes a non-admin user to control playback |
+| `/unauth [reply / id]` | Removes a user from authorized list |
 | `/authlist` | Shows list of authorized users in current chat |
 | `/reload` or `/admincache` | Refreshes administrator cache for the group |
 
@@ -105,8 +131,10 @@ Videl leverages Telegram Bot API 8.0+ / 10.x button styling:
 | Command | Description |
 | :--- | :--- |
 | `/ping` or `/alive` | Checks bot latency, PyTgCalls ping, uptime, and system RAM/CPU |
+| `/speedtest` or `/spt` | Runs network speedtest (download, upload, latency, ISP) |
 | `/stats` | Shows served chats, total users, assistants, and system diagnostics |
 | `/activevc` or `/ac` | Shows count and list of active voice chat streams |
+| `/leaveall` | Instructs assistants to leave all non-active chats |
 | `/broadcast [reply]` | Broadcasts message globally (`-user`, `-nochat`, `-copy`) |
 | `/blacklist [chat_id / id]`| Blacklists group or user from using the bot |
 | `/unblacklist [chat_id]` | Removes target from blacklist |
@@ -211,17 +239,49 @@ Videl/
 │   │   ├── _api.py           # Fallback stream API client
 │   │   ├── _dataclass.py     # Track & Media dataclasses
 │   │   ├── _exec.py          # Asynchronous eval runner
-│   │   ├── _inline.py        # Modern Inline Keyboards
+│   │   ├── _inline.py        # Modern Inline Keyboards with ButtonStyle
 │   │   ├── _play.py          # Assistant auto-join & play middleware
 │   │   ├── _queue.py         # Advanced playlist queue manager
 │   │   ├── _thumbnails.py    # PIL Dynamic Glassmorphism Thumbnails
 │   │   ├── _utilities.py     # Formatters, logs & lyrics scrapers
-│   │   ├── button_style.py   # Bot API ButtonStyle (Primary, Danger, Success)
+│   │   ├── button_style.py   # Bot API ButtonStyle (Primary, Danger, Success, Disabled)
 │   │   ├── rich_message.py   # Bot API 10.1+ RichMessage & Block builder
 │   │   ├── Inter-Light.ttf   # UI Font
 │   │   └── Raleway-Bold.ttf  # Header Font
 │   ├── locales/              # 13 JSON Localization files
-│   └── plugins/              # 27 Modular commands & feature plugins
+│   └── plugins/              # 32 Modular commands & feature plugins
+│       ├── active.py         # Active voice chat tracker
+│       ├── admin.py          # Group moderation (ban, mute, kick, purge, pin, staff)
+│       ├── auth.py           # Auth users manager
+│       ├── blacklist.py      # Blacklist / Whitelist manager
+│       ├── broadcast.py      # Global broadcast manager
+│       ├── callbacks.py      # Callback query router
+│       ├── downloader.py     # YouTube Video & MP3 Song Downloader
+│       ├── eval.py           # Python / Bash eval runner
+│       ├── iquery.py         # Telegram inline query search
+│       ├── language.py       # Multi-language switcher
+│       ├── leaveall.py       # Assistant leave inactive groups
+│       ├── loop.py           # Loop stream controller
+│       ├── lyrics.py         # Song lyrics scraper
+│       ├── misc.py           # Background timers & VC auto-leave
+│       ├── pause.py          # Pause stream
+│       ├── ping.py           # Health check & latency
+│       ├── play.py           # Audio & Video streamer
+│       ├── queue.py          # Playlist queue viewer
+│       ├── replay.py         # Replay current song
+│       ├── restart.py        # Clean restart & logs
+│       ├── resume.py         # Resume stream
+│       ├── search.py         # Interactive YouTube search
+│       ├── seek.py           # Forward / Backward seek
+│       ├── shuffle.py        # Queue shuffle
+│       ├── skip.py           # Skip to next song
+│       ├── speed.py          # Playback speed controller
+│       ├── speedtest.py      # Network speed diagnostics
+│       ├── start.py          # Start & help menu
+│       ├── stats.py          # System performance stats
+│       ├── stop.py           # Stop playback
+│       ├── sudoers.py        # Sudo users management
+│       └── volume.py         # Audio volume controller
 ├── config.py                 # Central configuration parser
 ├── sample.env                # Environment variables template
 ├── requirements.txt          # Python dependencies

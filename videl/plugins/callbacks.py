@@ -10,6 +10,31 @@ from videl.helpers._inline import buttons
 from videl.helpers._utilities import fetch_lyrics
 
 
+@app.on_callback_query(filters.regex("noop"))
+async def noop_cb(_, query: types.CallbackQuery):
+    await query.answer()
+
+
+@app.on_callback_query(filters.regex(r"^ytsearch_") & ~app.bl_users)
+async def ytsearch_cb(_, query: types.CallbackQuery):
+    action, video_id = query.data.split()
+    if action == "ytsearch_play":
+        await query.answer("⚡ Adding to voice chat queue...")
+        # Trigger play handler
+        track = await yt.search(f"https://youtube.com/watch?v={video_id}", query.message.id)
+        if track:
+            track.user = query.from_user.mention
+            pos = queue.add(query.message.chat.id, track)
+            if pos != 0 or await db.get_call(query.message.chat.id):
+                await query.message.reply_text(f"📋 <b>Added to queue at #{pos + 1}:</b> <a href='{track.url}'>{track.title}</a>")
+            else:
+                track.file_path = await yt.download(track.id)
+                await anon.play_media(chat_id=query.message.chat.id, message=query.message, media=track)
+    elif action == "ytsearch_dl":
+        await query.answer("📥 Downloading audio...")
+        await query.message.reply_text(f"📥 Use <code>/song https://youtube.com/watch?v={video_id}</code> to download this track!")
+
+
 @app.on_callback_query(filters.regex("cancel_dl") & ~app.bl_users)
 @lang.language()
 async def cancel_dl(_, query: types.CallbackQuery):
@@ -137,9 +162,31 @@ async def _controls(_, query: types.CallbackQuery):
                     pass
         return await query.answer("❌ No lyrics found for current track", show_alert=True)
 
+    elif action == "queue":
+        q_list = queue.get_queue(chat_id)
+        if not q_list:
+            return await query.answer("❌ Queue is currently empty!", show_alert=True)
+        text = f"📋 <b><u>Current Queue ({len(q_list)} tracks)</u></b>\n\n<blockquote expandable>"
+        for i, item in enumerate(q_list[:15], 1):
+            text += f"<b>{i}.</b> {item.title[:35]} (<code>{item.duration}</code>)\n"
+        if len(q_list) > 15:
+            text += f"<i>... and {len(q_list) - 15} more</i>\n"
+        text += "</blockquote>"
+        await query.message.reply_text(text)
+        return await query.answer("📋 Queue sent!")
+
     elif action == "back":
         is_p = await db.playing(chat_id)
-        return await query.edit_message_reply_markup(reply_markup=buttons.controls(chat_id, is_playing=is_p))
+        media = queue.get_current(chat_id)
+        q_len = max(0, len(queue.get_queue(chat_id)) - 1)
+        return await query.edit_message_reply_markup(
+            reply_markup=buttons.controls(
+                chat_id,
+                is_playing=is_p,
+                queue_count=q_len,
+                song_url=media.url if media else None,
+            )
+        )
 
     elif action == "force":
         pos, media = queue.check_item(chat_id, args[3])
@@ -170,7 +217,15 @@ async def _controls(_, query: types.CallbackQuery):
             caption_or_text = query.message.caption.html if query.message.caption else query.message.text.html
             mtext = re.sub(r"\n\n<blockquote>.*?</blockquote>", "", caption_or_text, flags=re.DOTALL)
             is_p = await db.playing(chat_id)
-            keyboard = buttons.controls(chat_id, status=status if action != "resume" else None, is_playing=is_p)
+            media = queue.get_current(chat_id)
+            q_len = max(0, len(queue.get_queue(chat_id)) - 1)
+            keyboard = buttons.controls(
+                chat_id,
+                status=status if action != "resume" else None,
+                is_playing=is_p,
+                queue_count=q_len,
+                song_url=media.url if media else None,
+            )
             await query.edit_message_text(f"{mtext}\n\n<blockquote>{reply}</blockquote>", reply_markup=keyboard)
     except Exception:
         pass
@@ -197,7 +252,17 @@ async def _help_cb(_, query: types.CallbackQuery):
         return
 
     help_key = f"help_{data[1]}"
-    help_text = query.lang.get(help_key, f"Help section: {data[1]}")
+    help_text = query.lang.get(help_key)
+    if not help_text:
+        if data[1] == "dl":
+            help_text = "📥 <b><u>Downloader Commands:</u></b>\n\n• /song [query / URL] - Download 320kbps MP3\n• /video [query / URL] - Download HD 720p/1080p MP4\n• /search [query] - Interactive YouTube search"
+        elif data[1] == "manage":
+            help_text = "🛡 <b><u>Group Management:</u></b>\n\n• /ban, /unban, /tban - Member banning\n• /mute, /unmute, /tmute - Member muting\n• /kick - Kick user\n• /pin, /unpin, /unpinall - Pinning\n• /purge, /del - Message cleaner\n• /staff, /adminlist - Staff roster\n• /id, /info - Entity info"
+        elif data[1] == "extra":
+            help_text = "✨ <b><u>Extra Features:</u></b>\n\n• /speedtest - Network diagnostics\n• /lyrics [song] - Fetch lyrics\n• /leaveall - Assistant leave inactive chats"
+        else:
+            help_text = f"Help section: {data[1]}"
+
     await query.edit_message_text(
         text=help_text,
         reply_markup=buttons.help_markup(query.lang, True),

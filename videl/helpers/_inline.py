@@ -5,7 +5,7 @@
 from typing import Dict, Any, Optional
 from pyrogram import types
 from videl.core.lang import lang_codes
-from videl.helpers.button_style import ButtonStyle, styled_button
+from videl.helpers.button_style import ButtonStyle, styled_button, disabled_button
 
 
 class Inline:
@@ -27,49 +27,44 @@ class Inline:
         timer: Optional[str] = None,
         remove: bool = False,
         is_playing: bool = True,
+        queue_count: int = 0,
+        song_url: Optional[str] = None,
     ) -> types.InlineKeyboardMarkup:
         keyboard = []
 
-        # Row 1: Status / Progress Bar
-        if status:
-            keyboard.append([
-                styled_button(text=f"📊 {status}", callback_data=f"controls status {chat_id}", style=ButtonStyle.PRIMARY)
-            ])
-        elif timer:
-            keyboard.append([
-                styled_button(text=f"⏱ {timer}", callback_data=f"controls status {chat_id}", style=ButtonStyle.PRIMARY)
-            ])
-
         if not remove:
-            # Row 2: Playback Controls
+            # Row 1: Primary Controls matching photo: [ ↶ Replay ] [ II Pause / ▷ Resume ] [ » Skip ]
             play_pause_btn = (
-                styled_button(text="⏸ Pause", callback_data=f"controls pause {chat_id}", style=ButtonStyle.PRIMARY)
+                styled_button(text="II Pause", callback_data=f"controls pause {chat_id}", style=ButtonStyle.PRIMARY)
                 if is_playing
-                else styled_button(text="▶️ Resume", callback_data=f"controls resume {chat_id}", style=ButtonStyle.SUCCESS)
+                else styled_button(text="▷ Resume", callback_data=f"controls resume {chat_id}", style=ButtonStyle.SUCCESS)
             )
             keyboard.append([
-                styled_button(text="⏮", callback_data=f"controls seekback {chat_id}"),
+                styled_button(text="↶ Replay", callback_data=f"controls replay {chat_id}", style=ButtonStyle.DEFAULT),
                 play_pause_btn,
-                styled_button(text="⏭", callback_data=f"controls skip {chat_id}"),
-                styled_button(text="🔄", callback_data=f"controls replay {chat_id}"),
-                styled_button(text="⏹", callback_data=f"controls stop {chat_id}", style=ButtonStyle.DANGER),
+                styled_button(text="» Skip", callback_data=f"controls skip {chat_id}", style=ButtonStyle.DEFAULT),
             ])
 
-            # Row 3: Audio Tools & Effects
+            # Row 2: Queue Counter matching photo: [ ≡ Queue • {count} ]
             keyboard.append([
-                styled_button(text="🔁 Loop", callback_data=f"controls loop {chat_id}"),
-                styled_button(text="🔀 Shuffle", callback_data=f"controls shuffle {chat_id}"),
+                styled_button(text=f"≡ Queue • {queue_count}", callback_data=f"controls queue {chat_id}", style=ButtonStyle.PRIMARY)
+            ])
+
+            # Row 3: Audio Tools & Effects: [ 🔊 Volume ] [ 🔀 Shuffle ] [ 📜 Lyrics ] [ ⚡ Speed ]
+            keyboard.append([
                 styled_button(text="🔊 Volume", callback_data=f"controls vol_menu {chat_id}"),
-                styled_button(text="⚡ Speed", callback_data=f"controls speed_menu {chat_id}"),
+                styled_button(text="🔀 Shuffle", callback_data=f"controls shuffle {chat_id}"),
                 styled_button(text="📜 Lyrics", callback_data=f"controls lyrics {chat_id}"),
+                styled_button(text="⚡ Speed", callback_data=f"controls speed_menu {chat_id}"),
             ])
 
-            # Row 4: Queue & Settings
-            keyboard.append([
-                styled_button(text="📋 Queue", callback_data=f"controls queue {chat_id}"),
-                styled_button(text="⚙️ Settings", callback_data="settings"),
-                styled_button(text="🗑 Close", callback_data="help close", style=ButtonStyle.DANGER),
-            ])
+            # Row 4: Direct Links & Actions
+            row_4 = []
+            if song_url:
+                row_4.append(styled_button(text="❐ Copy Link", copy_text=song_url, style=ButtonStyle.PRIMARY))
+            row_4.append(styled_button(text="⚙️ Settings", callback_data="settings", style=ButtonStyle.DEFAULT))
+            row_4.append(styled_button(text="🗑 Close", callback_data="help close", style=ButtonStyle.DANGER))
+            keyboard.append(row_4)
 
         return self.ikm(keyboard)
 
@@ -84,15 +79,18 @@ class Inline:
             ]
         else:
             cbs = [
-                ("admins", _lang.get("help_0", "Admins")),
-                ("auth", _lang.get("help_1", "Auth")),
-                ("blist", _lang.get("help_2", "Blacklist")),
-                ("lang", _lang.get("help_3", "Language")),
-                ("ping", _lang.get("help_4", "Ping")),
-                ("play", _lang.get("help_5", "Play")),
-                ("queue", _lang.get("help_6", "Queue")),
-                ("stats", _lang.get("help_7", "Stats")),
-                ("sudo", _lang.get("help_8", "Sudoers")),
+                ("admins", _lang.get("help_0", "👑 Admins")),
+                ("auth", _lang.get("help_1", "🛡 Auth")),
+                ("blist", _lang.get("help_2", "🚫 Blacklist")),
+                ("lang", _lang.get("help_3", "🌐 Language")),
+                ("ping", _lang.get("help_4", "⚡ Ping")),
+                ("play", _lang.get("help_5", "🎵 Play")),
+                ("queue", _lang.get("help_6", "📋 Queue")),
+                ("stats", _lang.get("help_7", "📊 Stats")),
+                ("sudo", _lang.get("help_8", "⚡ Sudoers")),
+                ("dl", "📥 Download"),
+                ("manage", "🛡 Management"),
+                ("extra", "✨ Extras"),
             ]
             buttons = [
                 styled_button(text=title, callback_data=f"help {cb}", style=ButtonStyle.DEFAULT)
@@ -156,7 +154,8 @@ class Inline:
                 styled_button(text="🔀 Shuffle", callback_data=f"controls shuffle {chat_id}", style=ButtonStyle.DEFAULT),
             ],
             [
-                styled_button(text="🗑 Close", callback_data="help close", style=ButtonStyle.DANGER)
+                styled_button(text="🔙 Back to Player", callback_data=f"controls back {chat_id}", style=ButtonStyle.DEFAULT),
+                styled_button(text="🗑 Close", callback_data="help close", style=ButtonStyle.DANGER),
             ]
         ])
 
