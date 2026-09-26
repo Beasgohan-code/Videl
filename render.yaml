@@ -1,0 +1,31 @@
+# Render Blueprint — use as Background Worker (recommended for bots)
+# Or keep type: web if you need the health URL
+
+services:
+  - type: worker
+    name: videl-music
+    runtime: python
+    plan: free
+    buildCommand: pip install -U pip && pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: STRING_SESSION
+        sync: false
+      - key: MONGO_DB_URL
+        sync: false
+      - key: OWNER_ID
+        sync: false
+      - key: LOGGER_ID
+        sync: false
+      - key: BOT_NAME
+        value: Videl Music
+      - key: SESSION_NAME
+        value: videl
