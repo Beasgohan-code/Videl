@@ -323,57 +323,100 @@ async def _update_progress(
 # AUTO START VC
 # ─────────────────────────────────────────────
 
-async def _ensure_vc(chat_id: int) -> bool:
-
+async def _try_create_group_call(client, chat_id: int, who: str) -> bool:
+    """CreateGroupCall via assistant or bot. True if created or already running."""
     try:
-
-        chat_id = int(chat_id)
-        chat = await assistant.get_chat(chat_id)
-
-        await assistant.invoke(
+        peer = await client.resolve_peer(chat_id)
+        await client.invoke(
             CreateGroupCall(
-                peer=await assistant.resolve_peer(chat.id),
-                random_id=random.randint(10000, 99999),
+                peer=peer,
+                random_id=random.randint(10_000, 999_999),
             )
         )
+        LOGGER.info(f"[VC] Created by {who} in {chat_id}")
+        await asyncio.sleep(1.5)
+        return True
+    except Exception as e:
+        err = str(e).lower()
+        if (
+            "already" in err
+            or "groupcall_already_started" in err
+            or "group_call_already_started" in err
+        ):
+            LOGGER.info(f"[VC] Already active ({who}) in {chat_id}")
+            return True
+        LOGGER.warning(f"[VC] {who} CreateGroupCall failed: {e}")
+        return False
 
-        LOGGER.info(f"[VC] Created in {chat_id}")
-        await asyncio.sleep(2)
+
+async def _try_promote_assistant(chat_id: int) -> bool:
+    """
+    If the bot can promote members, give the assistant
+    manage_video_chats (+ invite users) so it can start VC.
+    """
+    try:
+        from pyrogram.types import ChatPrivileges
+
+        me_asst = await assistant.get_me()
+        await bot.promote_chat_member(
+            chat_id,
+            me_asst.id,
+            privileges=ChatPrivileges(
+                can_manage_video_chats=True,
+                can_invite_users=True,
+            ),
+        )
+        LOGGER.info(f"[VC] Promoted assistant in {chat_id} (manage video chats)")
+        await asyncio.sleep(1)
+        return True
+    except Exception as e:
+        LOGGER.warning(f"[VC] promote assistant failed: {e}")
+        return False
+
+
+async def _ensure_vc(chat_id: int) -> bool:
+    """
+    Make sure a group voice chat exists.
+
+    Order:
+      1) Assistant CreateGroupCall
+      2) Bot CreateGroupCall (if bot has Manage Video Chats)
+      3) Auto-promote assistant (if bot can promote) → retry assistant
+      4) If already running → OK
+
+    Note: Telegram does NOT allow starting VC with only «Add members».
+    That right only lets the bot invite the assistant into the group.
+    """
+    chat_id = int(chat_id)
+
+    # 1) Assistant
+    if await _try_create_group_call(assistant, chat_id, "assistant"):
         return True
 
-    except TelegramServerError as e:
-        LOGGER.error(f"[VC] TelegramServerError: {e}")
-        await rich_send(
-            bot, chat_id,
-            rich_heading("❌ Voice chat failed (Telegram Server)", level=3)
-            + rich_note(f"<code>{rich_esc(e)}</code>"),
-        )
-        return False
+    # 2) Bot account as fallback (many groups give rights only to the bot)
+    if await _try_create_group_call(bot, chat_id, "bot"):
+        return True
 
-    except Exception as e:
-
-        err = str(e).lower()
-
-        # already active
-        if "already" in err or "groupcall_already_started" in err:
+    # 3) Promote assistant with manage_video_chats, then retry
+    if await _try_promote_assistant(chat_id):
+        if await _try_create_group_call(assistant, chat_id, "assistant-after-promote"):
+            return True
+        if await _try_create_group_call(bot, chat_id, "bot-after-promote"):
             return True
 
-        # admin rights missing
-        if "chat_admin_required" in err or "admin" in err:
-            await rich_send(
-                bot, chat_id,
-                rich_heading("❌ Need VC admin rights", level=3)
-                + rich_note("Give the assistant Manage Video Chats permission"),
-            )
-            return False
-
-        LOGGER.error(f"[VC ERROR] {e}")
-        await rich_send(
-            bot, chat_id,
-            rich_heading("❌ Voice chat failed", level=3)
-            + rich_note(f"<code>{rich_esc(e)}</code>"),
-        )
-        return False
+    await rich_send(
+        bot,
+        chat_id,
+        rich_heading("❌ Need VC admin rights", level=3)
+        + rich_note(
+            "Telegram needs <b>Manage Video Chats</b> to <b>start</b> a call.\n"
+            "«Add members» only invites the assistant — it cannot start VC.\n\n"
+            "<b>Fix (pick one):</b>\n"
+            "• Promote <b>bot + assistant</b> → Manage Video Chats\n"
+            "• Or start Voice Chat manually once, then /play again"
+        ),
+    )
+    return False
 
 
 # ─────────────────────────────────────────────
@@ -540,20 +583,16 @@ async def play_song(
 
                 return
 
-            # admin permission error
-            if "chat_admin_required" in err or "admin" in err:
+            # admin permission error — try auto VC create / promote once
+            if "chat_admin_required" in err or ("admin" in err and "user" not in err):
+                LOGGER.error(f"[ADMIN ERROR] {e}")
+                ok = await _ensure_vc(chat_id)
+                if ok:
+                    continue
                 try:
                     remove_from_queue(chat_id, 0)
                 except Exception:
                     pass
-
-                await rich_send(
-                    bot, chat_id,
-                    rich_heading("❌ Need VC admin rights", level=3)
-                    + rich_note("ᴘʟᴇᴀsᴇ ɢɪᴠᴇ » ᴍᴀɴᴀɢᴇ ᴠɪᴅᴇᴏ ᴄʜᴀᴛs, ᴀᴅᴍɪɴ ʀɪɢʜᴛs · "
-                                "ᴀssɪsᴛᴀɴᴛ ᴍᴜsᴛ ʙᴇ ᴀᴅᴍɪɴ"),
-                )
-                LOGGER.error(f"[ADMIN ERROR] {e}")
                 return
 
             # generic error
