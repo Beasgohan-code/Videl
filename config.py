@@ -53,9 +53,9 @@ PORT = int(os.getenv("PORT", "10000"))
 
 START_PHOTOS = [
     p.strip()
-    for p in os.getenv("START_PHOTOS", "https://files.catbox.moe/jgt2vm.png").split(",")
+    for p in os.getenv("START_PHOTOS", "https://iili.io/n5ClDil.jpg").split(",")
     if p.strip()
-] or ["https://files.catbox.moe/jgt2vm.png"]
+] or ["https://iili.io/n5ClDil.jpg"]
 
 MAX_DURATION_SECONDS = int(os.getenv("MAX_DURATION_SECONDS", "1800"))
 QUEUE_LIMIT = int(os.getenv("QUEUE_LIMIT", "20"))

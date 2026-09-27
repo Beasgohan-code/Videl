@@ -4,7 +4,7 @@
 # --------------------------------------------------------------------------------
 
 import asyncio
-import random
+import time
 
 from pyrogram import filters
 from pyrogram.enums import ChatType
@@ -13,18 +13,19 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 import config
 from videl import bot, LOGGER
-from videl.modules.block import user_allowed
 from videl.utils.db import add_broadcast_chat, add_served_chat, add_served_user
+
+# Anti-spam: one /start reply per chat every few seconds
+_last_start: dict[int, float] = {}
+_START_COOLDOWN = 4.0
 
 
 def _btn(text: str, **kwargs) -> InlineKeyboardButton:
-    """Build a button without ButtonStyle (avoids crashes on older clients)."""
-    # Drop unsupported kwargs like style=
     kwargs.pop("style", None)
     return InlineKeyboardButton(text, **kwargs)
 
 
-def _start_keyboard() -> InlineKeyboardMarkup:
+def _start_keyboard() -> InlineKeyboardMarkup | None:
     rows = []
     try:
         link = getattr(config, "BOT_LINK", None) or "https://t.me/"
@@ -51,7 +52,8 @@ def _start_keyboard() -> InlineKeyboardMarkup:
         if oid:
             row4.append(_btn("👑 Owner", url=f"tg://user?id={oid}"))
         row4.append(_btn("📦 Source", url="https://github.com/Beasgohan-code/Videl"))
-        rows.append(row4)
+        if row4:
+            rows.append(row4)
     except Exception:
         pass
 
@@ -61,19 +63,18 @@ def _start_keyboard() -> InlineKeyboardMarkup:
 def _plain_private(uid: int, name: str) -> str:
     bot_name = getattr(config, "BOT_NAME", "Videl")
     return (
-        f"⚡ <b>{bot_name}</b>\n\n"
+        f"⚡ <b>{bot_name}</b>\n"
         f"Hey <a href='tg://user?id={uid}'><b>{name}</b></a> 👋\n\n"
-        f"Welcome to <b>{bot_name}</b> — a Telegram VC music bot.\n\n"
+        f"Telegram <b>Voice Chat</b> music bot.\n\n"
         f"<b>✨ Features</b>\n"
         f"• 🎵 Audio & video in VC\n"
         f"• 🔁 AutoPlay · playlists\n"
-        f"• 🎚️ Speed & bass effects\n"
-        f"• 🛡️ Group admin tools\n"
-        f"• 📝 Lyrics · 📢 Channel play\n\n"
+        f"• 🎚️ Speed & bass\n"
+        f"• 🛡️ Admin tools · 📝 Lyrics\n\n"
         f"<b>🚀 Quick start</b>\n"
         f"1. Add me to your group\n"
         f"2. Give manage video chat rights\n"
-        f"3. Send <code>/play song name</code>\n\n"
+        f"3. <code>/play song name</code>\n\n"
         f"Made with ❤️ by <b>Beasgohan</b>"
     )
 
@@ -81,31 +82,46 @@ def _plain_private(uid: int, name: str) -> str:
 def _plain_group(uid: int, name: str, title: str) -> str:
     bot_name = getattr(config, "BOT_NAME", "Videl")
     return (
-        f"⚡ <b>{bot_name}</b>\n\n"
+        f"⚡ <b>{bot_name}</b>\n"
         f"Hey <a href='tg://user?id={uid}'><b>{name}</b></a> 👋\n"
         f"Thanks for adding me to <b>{title}</b>.\n\n"
-        f"Send <code>/play song name</code> to start 🎵"
+        f"Promote me (manage video chats) then:\n"
+        f"<code>/play song name</code> 🎵"
     )
 
 
-async def _safe_reply(chat_id: int, text: str, kb=None) -> Message | None:
-    """Always try to show something — photo → text → bare text."""
+def _start_photo() -> str | None:
     photos = getattr(config, "START_PHOTOS", None) or []
-    photo = random.choice(photos) if photos else None
+    if not photos:
+        return "https://iili.io/n5ClDil.jpg"
+    return photos[0]
+
+
+async def _safe_reply(
+    message: Message,
+    text: str,
+    kb: InlineKeyboardMarkup | None = None,
+) -> Message | None:
+    """Send exactly one reply (photo+caption or text). Never double-send."""
+    chat_id = message.chat.id
+    photo = _start_photo()
 
     if photo:
         try:
-            return await bot.send_photo(
-                chat_id,
+            return await message.reply_photo(
                 photo=photo,
                 caption=text,
                 reply_markup=kb,
+                quote=True,
             )
         except FloodWait as fw:
             await asyncio.sleep(fw.value + 1)
             try:
-                return await bot.send_photo(
-                    chat_id, photo=photo, caption=text, reply_markup=kb
+                return await message.reply_photo(
+                    photo=photo,
+                    caption=text,
+                    reply_markup=kb,
+                    quote=True,
                 )
             except Exception as e:
                 LOGGER.warning(f"start photo retry failed: {e}")
@@ -113,42 +129,56 @@ async def _safe_reply(chat_id: int, text: str, kb=None) -> Message | None:
             LOGGER.warning(f"start photo failed: {e}")
 
     try:
-        return await bot.send_message(
-            chat_id,
+        return await message.reply_text(
             text,
             reply_markup=kb,
+            quote=True,
             disable_web_page_preview=True,
         )
     except FloodWait as fw:
         await asyncio.sleep(fw.value + 1)
         try:
-            return await bot.send_message(
-                chat_id, text, reply_markup=kb, disable_web_page_preview=True
+            return await message.reply_text(
+                text,
+                reply_markup=kb,
+                quote=True,
+                disable_web_page_preview=True,
             )
         except Exception as e:
             LOGGER.error(f"start text retry failed: {e}")
     except Exception as e:
         LOGGER.error(f"start text failed: {e}")
-        # Last resort — no keyboard
         try:
-            return await bot.send_message(chat_id, text, disable_web_page_preview=True)
+            return await bot.send_message(
+                chat_id, text, disable_web_page_preview=True
+            )
         except Exception as e2:
             LOGGER.error(f"start bare failed: {e2}")
     return None
 
 
-@bot.on_message(filters.command(["start", "start@"]))
+# Single command name — Pyrogram already matches /start@BotUsername
+@bot.on_message(filters.command("start") & ~filters.forwarded, group=0)
 async def start_handler(_, message: Message) -> None:
-    """
-    /start — no heavy filters, always replies.
-    Blocked users are still allowed to see start (harmless).
-    """
+    chat_id = message.chat.id if message.chat else 0
+    now = time.time()
+
+    # Drop rapid duplicate /start (double-click, dual handler, etc.)
+    last = _last_start.get(chat_id, 0)
+    if now - last < _START_COOLDOWN:
+        return
+    _last_start[chat_id] = now
+
+    # Keep dict small
+    if len(_last_start) > 500:
+        cutoff = now - 60
+        for k in [k for k, t in _last_start.items() if t < cutoff]:
+            _last_start.pop(k, None)
+
     try:
         uid = message.from_user.id if message.from_user else 0
         name = (message.from_user.first_name if message.from_user else "User") or "User"
-        # strip HTML-ish chars
         name = name.replace("<", "").replace(">", "")
-        chat_id = message.chat.id
         chat_type = message.chat.type
 
         try:
@@ -166,28 +196,17 @@ async def start_handler(_, message: Message) -> None:
 
         if chat_type == ChatType.PRIVATE:
             text = _plain_private(uid, name)
-            await _safe_reply(chat_id, text, kb)
+            await _safe_reply(message, text, kb)
             try:
                 add_broadcast_chat(chat_id, "private")
             except Exception:
                 pass
             return
 
+        # Groups / super groups — one message only
         title = (message.chat.title or "this chat").replace("<", "").replace(">", "")
         text = _plain_group(uid, name, title)
-        await _safe_reply(chat_id, text, kb)
-
-        try:
-            await bot.send_message(
-                chat_id,
-                "✅ <b>Almost ready</b>\n\n"
-                "Make me <b>admin</b> with:\n"
-                "• Delete messages\n"
-                "• Manage video chats\n"
-                "• Invite users",
-            )
-        except Exception:
-            pass
+        await _safe_reply(message, text, kb)
 
         try:
             add_broadcast_chat(chat_id, "group")
@@ -196,21 +215,16 @@ async def start_handler(_, message: Message) -> None:
 
     except Exception as e:
         LOGGER.error(f"/start handler crash: {e}")
+        # Do not send a second error message if we already replied
+        if now - _last_start.get(chat_id, 0) < 1:
+            return
         try:
-            await message.reply_text(
-                f"⚡ Bot is online.\nUse /play song name in a group.\n\n<code>{e}</code>"
-            )
+            await message.reply_text("⚡ Bot is online. Use /play in a group.")
         except Exception:
-            try:
-                await bot.send_message(
-                    message.chat.id,
-                    "⚡ Bot is online. Use /play in a group.",
-                )
-            except Exception:
-                pass
+            pass
 
 
-@bot.on_message(filters.command(["help", "help@"]))
+@bot.on_message(filters.command("help") & ~filters.forwarded, group=0)
 async def help_handler(_, message: Message) -> None:
     try:
         kb = InlineKeyboardMarkup([
@@ -226,7 +240,6 @@ async def help_handler(_, message: Message) -> None:
         ])
         text = (
             "📖 <b>Help menu</b>\n\n"
-            "Tap a category below, or try:\n"
             "• <code>/play song</code>\n"
             "• <code>/vplay song</code>\n"
             "• <code>/cplay song</code>\n"
@@ -234,18 +247,17 @@ async def help_handler(_, message: Message) -> None:
             "• <code>/queue</code> · <code>/lyrics</code>\n"
             "• <code>/ping</code>"
         )
-        await bot.send_message(
-            message.chat.id,
+        await message.reply_text(
             text,
             reply_markup=kb,
+            quote=True,
             disable_web_page_preview=True,
         )
     except Exception as e:
         LOGGER.error(f"/help failed: {e}")
         try:
             await message.reply_text(
-                "📖 Commands:\n"
-                "/play /vplay /cplay /pause /skip /stop /queue /lyrics /ping"
+                "📖 /play /vplay /pause /skip /stop /queue /lyrics /ping"
             )
         except Exception:
             pass
