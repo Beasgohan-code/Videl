@@ -57,11 +57,13 @@ async def _auto_leave_idle_vcs() -> None:
         # call_py may expose active calls differently depending on version
         active = []
         try:
-            # pytgcalls 2.x style
-            if hasattr(call_py, "group_calls"):
-                active = list(getattr(call_py, "group_calls", {}) or {})
-            elif hasattr(call_py, "calls"):
-                active = list(getattr(call_py, "calls", {}) or {})
+            # pytgcalls 2.x — group_calls may be async property; never call bare
+            calls = getattr(call_py, "calls", None)
+            if calls is not None and not callable(calls):
+                active = list(calls.keys() if hasattr(calls, "keys") else calls or [])
+            else:
+                # avoid awaiting group_calls incorrectly — skip if unknown
+                active = []
         except Exception:
             active = []
 

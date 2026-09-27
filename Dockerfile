@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # System deps: ffmpeg is required for audio/video; curl/git for installs
 RUN apt-get update -y && \

@@ -21,11 +21,20 @@ from videl.utils.formatters import sec_to_iso
 logger = logging.getLogger(__name__)
 
 # ── API config ────────────────────────────────────────────────────────────────
+# Eldian Music API — primary download (bypasses YT bot-check on cloud hosts)
+# Docs: https://github.com/Eldian-Network/eldian-music-api
+# Public instance used by music bots (stream endpoints):
+ELDIAN_API_URL = os.environ.get(
+    "ELDIAN_API_URL",
+    "https://eldian-music-api-production.up.railway.app",
+).rstrip("/")
+ELDIAN_API_KEY = os.environ.get("ELDIAN_API_KEY", "").strip()  # optional for /v1/track
+
 SHRUTI_API_URL        = os.environ.get("SHRUTI_API_URL", "https://api.shrutibots.site")
-SHRUTI_API_KEY        = os.environ.get("SHRUTI_API_KEY", "ShrutiBots1JyNWUFBwhFiouHmUyXC")  # Get from @SHRUTIAPIBOT on Telegram
+SHRUTI_API_KEY        = os.environ.get("SHRUTI_API_KEY", "ShrutiBots1JyNWUFBwhFiouHmUyXC")
 DOWNLOAD_DIR          = "downloads"
-SHRUTI_TOKEN_TIMEOUT  = 10    # seconds — fetch download token
-SHRUTI_STREAM_TIMEOUT = 900   # 15 min  — stream long songs
+SHRUTI_TOKEN_TIMEOUT  = 10
+SHRUTI_STREAM_TIMEOUT = 900
 
 _file_cache: dict[str, str] = {}
 
@@ -251,9 +260,202 @@ async def download_video(link: str) -> str:
         return None
 
 
+
+async def _download_via_eldian(video_id: str, video: bool = False) -> str | None:
+    """
+    Primary external downloader — Eldian Music API.
+    Uses /api/stream_audio or /api/download (public Railway instance),
+    and optionally POST /v1/track/by-video-id when ELDIAN_API_KEY is set.
+    """
+    if not video_id or len(video_id) < 3:
+        return None
+
+    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+    ext = "mp4" if video else "mp3"
+    out = os.path.join(DOWNLOAD_DIR, f"{video_id}.{ext}")
+    if os.path.exists(out) and os.path.getsize(out) > 1024:
+        return out
+
+    watch = f"https://www.youtube.com/watch?v={video_id}"
+    timeout = aiohttp.ClientTimeout(total=300, connect=20)
+
+    # 1) Official Eldian-Network style (API key)
+    if ELDIAN_API_KEY:
+        try:
+            headers = {
+                "X-API-Key": ELDIAN_API_KEY,
+                "Content-Type": "application/json",
+            }
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(
+                    f"{ELDIAN_API_URL}/v1/track/by-video-id",
+                    headers=headers,
+                    json={"video_id": video_id},
+                ) as resp:
+                    if resp.status == 200:
+                        async with aiofiles.open(out, "wb") as f:
+                            async for chunk in resp.content.iter_chunked(131072):
+                                await f.write(chunk)
+                        if os.path.exists(out) and os.path.getsize(out) > 1024:
+                            logger.info(
+                                f"[eldian] v1 OK — {os.path.getsize(out)//1024}KB"
+                            )
+                            return out
+                    else:
+                        body = (await resp.text())[:200]
+                        logger.warning(f"[eldian] v1 HTTP {resp.status}: {body}")
+                        _cleanup(out)
+        except Exception as e:
+            logger.warning(f"[eldian] v1 error: {e}")
+            _cleanup(out)
+
+    # 2) Public stream endpoints (AloneX / Railway style — no key)
+    try:
+        if video:
+            url = f"{ELDIAN_API_URL}/api/download"
+            params = {"url": watch, "format": "best[height<=720]/best"}
+        else:
+            url = f"{ELDIAN_API_URL}/api/stream_audio"
+            params = {"url": watch}
+
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url, params=params, allow_redirects=True) as resp:
+                if resp.status != 200:
+                    body = (await resp.text())[:200]
+                    logger.warning(f"[eldian] stream HTTP {resp.status}: {body}")
+                    return None
+                # detect extension from content-type
+                ctype = (resp.headers.get("Content-Type") or "").lower()
+                if "mp4" in ctype or "video" in ctype:
+                    out2 = os.path.join(DOWNLOAD_DIR, f"{video_id}.mp4")
+                elif "webm" in ctype:
+                    out2 = os.path.join(DOWNLOAD_DIR, f"{video_id}.webm")
+                elif "m4a" in ctype or "mp4a" in ctype:
+                    out2 = os.path.join(DOWNLOAD_DIR, f"{video_id}.m4a")
+                else:
+                    out2 = out  # mp3 / mpeg
+                async with aiofiles.open(out2, "wb") as f:
+                    async for chunk in resp.content.iter_chunked(131072):
+                        await f.write(chunk)
+                if os.path.exists(out2) and os.path.getsize(out2) > 1024:
+                    logger.info(
+                        f"[eldian] stream OK — {os.path.getsize(out2)//1024}KB → {out2}"
+                    )
+                    return out2
+                _cleanup(out2)
+    except Exception as e:
+        logger.warning(f"[eldian] stream error: {e}")
+        _cleanup(out)
+
+    return None
+
+
+# Public Piped instances (no cookies needed when yt-dlp is bot-blocked)
+_PIPED_INSTANCES = [
+    "https://pipedapi.kavin.rocks",
+    "https://pipedapi.adminforge.de",
+    "https://api.piped.private.coffee",
+    "https://pipedapi.nosebs.ru",
+]
+
+
+async def _download_via_piped(video_id: str, video: bool = False) -> str | None:
+    """Fallback when yt-dlp hits YouTube bot-check on cloud hosts."""
+    if not video_id:
+        return None
+    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+    ext = "mp4" if video else "m4a"
+    out = os.path.join(DOWNLOAD_DIR, f"{video_id}.{ext}")
+    if os.path.exists(out) and os.path.getsize(out) > 1024:
+        return out
+
+    timeout = aiohttp.ClientTimeout(total=90, connect=15)
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; VidelBot/1.0)"}
+
+    for base in _PIPED_INSTANCES:
+        try:
+            api = f"{base.rstrip('/')}/streams/{video_id}"
+            async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+                async with session.get(api) as resp:
+                    if resp.status != 200:
+                        logger.warning(f"[piped] {base} HTTP {resp.status}")
+                        continue
+                    data = await resp.json()
+
+                streams = data.get("videoStreams" if video else "audioStreams") or []
+                if not streams and not video:
+                    streams = data.get("audioStreams") or []
+                if not streams:
+                    logger.warning(f"[piped] no streams from {base}")
+                    continue
+
+                def _score(s):
+                    br = s.get("bitrate") or 0
+                    try:
+                        br = int(br)
+                    except Exception:
+                        br = 0
+                    mime = (s.get("mimeType") or s.get("format") or "").lower()
+                    bonus = 50_000 if ("mp4" in mime or "m4a" in mime or "mp4a" in mime) else 0
+                    return br + bonus
+
+                streams = sorted(streams, key=_score, reverse=True)
+                media_url = streams[0].get("url")
+                if not media_url:
+                    continue
+
+                async with session.get(media_url) as mresp:
+                    if mresp.status != 200:
+                        continue
+                    async with aiofiles.open(out, "wb") as f:
+                        async for chunk in mresp.content.iter_chunked(131072):
+                            await f.write(chunk)
+
+                if os.path.exists(out) and os.path.getsize(out) > 1024:
+                    logger.info(f"[piped] OK via {base} — {os.path.getsize(out)//1024}KB")
+                    return out
+                _cleanup(out)
+        except Exception as e:
+            logger.warning(f"[piped] {base}: {e}")
+            _cleanup(out)
+    return None
+
+
+async def _download_via_shruti(video_id: str, video: bool = False) -> str | None:
+    if not video_id:
+        return None
+    ext = "mp4" if video else "mp3"
+    out = os.path.join(DOWNLOAD_DIR, f"{video_id}.{ext}")
+    if os.path.exists(out) and os.path.getsize(out) > 1024:
+        return out
+    try:
+        timeout = aiohttp.ClientTimeout(total=90, connect=10)
+        params = {
+            "url": video_id,
+            "type": "video" if video else "audio",
+            "api_key": SHRUTI_API_KEY,
+        }
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(f"{SHRUTI_API_URL}/download", params=params) as resp:
+                if resp.status != 200:
+                    logger.warning(f"[shruti] HTTP {resp.status}")
+                    return None
+                async with aiofiles.open(out, "wb") as f:
+                    async for chunk in resp.content.iter_chunked(131072):
+                        await f.write(chunk)
+        if os.path.exists(out) and os.path.getsize(out) > 1024:
+            logger.info(f"[shruti] OK — {os.path.getsize(out)//1024}KB")
+            return out
+        _cleanup(out)
+    except Exception as e:
+        logger.warning(f"[shruti] {e}")
+        _cleanup(out)
+    return None
+
+
 async def resolve_stream(url: str, video: bool = False) -> str:
     """
-    Local file / cache / classic yt-dlp.
+    1) local/cache  2) yt-dlp (+ cookies)  3) Piped  4) Shruti
     """
     if url and os.path.exists(url) and os.path.isfile(url):
         return url
@@ -267,26 +469,56 @@ async def resolve_stream(url: str, video: bool = False) -> str:
         _file_cache[url] = cached
         return cached
 
-    logger.info(f"[resolve] downloading {video_id} video={video}")
-    path = await (download_video(url) if video else download_song(url))
-    if path and os.path.exists(path):
-        _file_cache[url] = path
-        return path
+    errors = []
 
-    # One more direct sync attempt with real error
-    err = None
+    # 1) Eldian API (primary — works on Render without YT cookies)
+    logger.info(f"[resolve] eldian {video_id} video={video}")
     try:
-        path = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: _sync_ytdlp(url, video=video)
-        )
+        path = await _download_via_eldian(video_id, video=video)
+        if path and os.path.exists(path):
+            _file_cache[url] = path
+            return path
+        errors.append("eldian: no file")
+    except Exception as e:
+        errors.append(f"eldian: {e}")
+        logger.warning(f"[resolve] eldian: {e}")
+
+    # 2) yt-dlp (cookies / local)
+    logger.info(f"[resolve] yt-dlp {video_id} video={video}")
+    try:
+        path = await (download_video(url) if video else download_song(url))
+        if path and os.path.exists(path):
+            _file_cache[url] = path
+            return path
+    except Exception as e:
+        errors.append(f"yt-dlp: {e}")
+        logger.warning(f"[resolve] yt-dlp: {e}")
+
+    logger.info(f"[resolve] piped fallback {video_id}")
+    try:
+        path = await _download_via_piped(video_id, video=video)
         if path:
             _file_cache[url] = path
             return path
     except Exception as e:
-        err = e
-        logger.error(f"[resolve] {e}")
+        errors.append(f"piped: {e}")
+        logger.warning(f"[resolve] piped: {e}")
 
-    raise Exception(str(err) if err else f"yt-dlp could not download {video_id}")
+    logger.info(f"[resolve] shruti fallback {video_id}")
+    try:
+        path = await _download_via_shruti(video_id, video=video)
+        if path:
+            _file_cache[url] = path
+            return path
+    except Exception as e:
+        errors.append(f"shruti: {e}")
+
+    tip = (
+        "All download backends failed. "
+        "Set ELDIAN_API_URL / ELDIAN_API_KEY or YTDLP_COOKIES=/app/cookies.txt"
+    )
+    detail = "; ".join(str(x)[:120] for x in errors[:2]) if errors else "all methods failed"
+    raise Exception(f"{tip} | {detail}"[:500])
 
 
 # ═════════════════════════════════════════════════════════════════════════════

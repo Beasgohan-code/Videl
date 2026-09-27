@@ -4,6 +4,7 @@
 # --------------------------------------------------------------------------------
 
 import logging
+import os
 from typing import Optional
 
 from pymongo import MongoClient
@@ -28,8 +29,25 @@ def start_mongo() -> bool:
     try:
         _client = MongoClient(config.MONGO_DB_URL, serverSelectionTimeoutMS=5000)
         _client.admin.command("ping")
-        _db = _client["videl"]
-        logger.info("✅ MongoDB connected successfully.")
+        # Prefer env name; default "Videl" (matches existing Atlas DB — case matters)
+        db_name = (os.environ.get("MONGO_DB_NAME") or "Videl").strip() or "Videl"
+        try:
+            existing = set(_client.list_database_names())
+            # If opposite case already exists, reuse it to avoid code 13297
+            if db_name not in existing:
+                lower, title = db_name.lower(), db_name[:1].upper() + db_name[1:]
+                if lower in existing:
+                    db_name = lower
+                elif title in existing:
+                    db_name = title
+                elif "Videl" in existing:
+                    db_name = "Videl"
+                elif "videl" in existing:
+                    db_name = "videl"
+        except Exception:
+            pass
+        _db = _client[db_name]
+        logger.info(f"✅ MongoDB connected (db={db_name}).")
         return True
 
     except (ConnectionFailure, ServerSelectionTimeoutError) as e:
