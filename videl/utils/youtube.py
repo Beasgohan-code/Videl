@@ -32,17 +32,27 @@ ELDIAN_API_URL = (
 ).rstrip("/")
 ELDIAN_API_KEY = os.environ.get("ELDIAN_API_KEY", "").strip()
 
-SHRUTI_API_URL        = os.environ.get("SHRUTI_API_URL", "https://api.shrutibots.site")
-SHRUTI_API_KEY        = os.environ.get("SHRUTI_API_KEY", "ShrutiBots1JyNWUFBwhFiouHmUyXC")
-DOWNLOAD_DIR          = "downloads"
-SHRUTI_TOKEN_TIMEOUT  = 10
-SHRUTI_STREAM_TIMEOUT = 900
+# Shruti API — same as BadMusic / ShizuMusic
+# Get a free key from Telegram: @SHRUTIAPIBOT  (default public key is expired)
+SHRUTI_API_URL = os.environ.get("SHRUTI_API_URL", "https://api.shrutibots.site").rstrip("/")
+SHRUTI_API_KEY = (
+    os.environ.get("SHRUTI_API_KEY")
+    or os.environ.get("API_KEY")
+    or ""
+).strip()
+DOWNLOAD_DIR = "downloads"
+SHRUTI_STREAM_TIMEOUT = int(os.environ.get("SHRUTI_STREAM_TIMEOUT", "300"))
 
-# Cookies — only reliable fix for YouTube bot-check on Render/Railway
-# YTDLP_COOKIES=/app/cookies.txt   OR
-# YTDLP_COOKIES_URL=https://.../cookies.txt  (downloaded at runtime)
+# Cookies — YTDLP_COOKIES path or YTDLP_COOKIES_URL (auto-downloaded & saved)
 _COOKIES_FILE = os.environ.get("YTDLP_COOKIES") or os.environ.get("COOKIES_PATH") or ""
 _COOKIES_URL  = (os.environ.get("YTDLP_COOKIES_URL") or "").strip()
+
+# Auto proxy: PROXY_URL, PROXY_LIST (comma), proxies.txt, AUTO_PROXY=1 (free list)
+_PROXY_URL  = (os.environ.get("PROXY_URL") or os.environ.get("YOUTUBE_PROXY") or "").strip()
+_PROXY_LIST = (os.environ.get("PROXY_LIST") or "").strip()
+_AUTO_PROXY = (os.environ.get("AUTO_PROXY") or "1").strip().lower() in ("1", "true", "yes", "on")
+_proxy_cache: list = []
+_proxy_bad: set = set()
 
 _file_cache: dict[str, str] = {}
 
@@ -67,37 +77,155 @@ def _cleanup(path: str) -> None:
     except Exception:
         pass
 
-def _cookies_path() -> str | None:
-    """Return path to a valid Netscape cookies file, or None."""
+def _cookies_save_path() -> str:
+    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+    env = os.environ.get("YTDLP_COOKIES") or os.environ.get("COOKIES_PATH")
+    if env:
+        parent = os.path.dirname(env) or "."
+        os.makedirs(parent, exist_ok=True)
+        return env
+    return os.path.join(DOWNLOAD_DIR, "cookies.txt")
+
+
+def _is_real_cookies(raw: str) -> bool:
+    markers = ("SID", "HSID", "SSID", "LOGIN_INFO", "__Secure-", "SAPISID", "APISID")
+    return any(x in raw for x in markers)
+
+
+def _save_cookies_bytes(data: bytes, dest: str | None = None) -> str | None:
     global _COOKIES_FILE
-    # 1) local path
-    if _COOKIES_FILE and os.path.isfile(_COOKIES_FILE):
-        return _COOKIES_FILE
-    # 2) download from URL once
+    if not data or len(data) < 80:
+        return None
+    dest = dest or _cookies_save_path()
+    try:
+        os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
+        with open(dest, "wb") as f:
+            f.write(data)
+        try:
+            root = os.path.join(os.getcwd(), "cookies.txt")
+            if os.path.abspath(root) != os.path.abspath(dest):
+                with open(root, "wb") as f:
+                    f.write(data)
+        except Exception:
+            pass
+        _COOKIES_FILE = dest
+        logger.info(f"[cookies] saved {len(data)} bytes → {dest}")
+        return dest
+    except Exception as e:
+        logger.warning(f"[cookies] save failed: {e}")
+        return None
+
+
+def _cookies_path() -> str | None:
+    global _COOKIES_FILE
+    candidates = []
+    if _COOKIES_FILE:
+        candidates.append(_COOKIES_FILE)
+    candidates.extend([
+        "cookies.txt",
+        "/app/cookies.txt",
+        os.path.join(os.getcwd(), "cookies.txt"),
+        os.path.join(DOWNLOAD_DIR, "cookies.txt"),
+        _cookies_save_path(),
+    ])
+    for p in candidates:
+        if p and os.path.isfile(p) and os.path.getsize(p) > 80:
+            try:
+                raw = open(p, "r", encoding="utf-8", errors="ignore").read()
+            except Exception:
+                raw = ""
+            if _is_real_cookies(raw):
+                _COOKIES_FILE = p
+                return p
     if _COOKIES_URL:
-        dest = os.path.join(DOWNLOAD_DIR, "cookies.txt")
-        os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-        if os.path.isfile(dest) and os.path.getsize(dest) > 50:
-            _COOKIES_FILE = dest
-            return dest
+        dest = _cookies_save_path()
+        if os.path.isfile(dest) and os.path.getsize(dest) > 80:
+            try:
+                raw = open(dest, "r", encoding="utf-8", errors="ignore").read()
+                if _is_real_cookies(raw):
+                    _COOKIES_FILE = dest
+                    return dest
+            except Exception:
+                pass
         try:
             import urllib.request
             req = urllib.request.Request(
-                _COOKIES_URL,
-                headers={"User-Agent": "Mozilla/5.0 VidelBot"},
+                _COOKIES_URL, headers={"User-Agent": "Mozilla/5.0 VidelBot"}
             )
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = resp.read()
-            if data and len(data) > 50:
-                with open(dest, "wb") as f:
-                    f.write(data)
-                _COOKIES_FILE = dest
-                logger.info(f"[cookies] downloaded {len(data)} bytes → {dest}")
-                return dest
+            saved = _save_cookies_bytes(data, dest)
+            if saved:
+                return saved
         except Exception as e:
             logger.warning(f"[cookies] URL fetch failed: {e}")
     return None
 
+
+def _load_proxy_list() -> list:
+    global _proxy_cache
+    if _proxy_cache:
+        return [p for p in _proxy_cache if p not in _proxy_bad]
+
+    proxies = []
+    if _PROXY_URL:
+        proxies.append(_PROXY_URL)
+    if _PROXY_LIST:
+        for part in _PROXY_LIST.replace(";", ",").split(","):
+            part = part.strip()
+            if part:
+                proxies.append(part)
+    for fname in ("proxies.txt", os.path.join(DOWNLOAD_DIR, "proxies.txt"), "/app/proxies.txt"):
+        if not os.path.isfile(fname):
+            continue
+        try:
+            for line in open(fname, encoding="utf-8", errors="ignore"):
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    proxies.append(line)
+        except Exception:
+            pass
+
+    norm = []
+    for p in proxies:
+        if "://" not in p:
+            p = "http://" + p
+        if p not in norm:
+            norm.append(p)
+
+    if _AUTO_PROXY and len(norm) < 3:
+        for src in (
+            "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=5000&country=all&ssl=all&anonymity=all",
+            "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
+        ):
+            try:
+                import urllib.request
+                req = urllib.request.Request(src, headers={"User-Agent": "VidelBot"})
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    body = resp.read().decode("utf-8", errors="ignore")
+                for line in body.splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if "://" not in line:
+                        line = "http://" + line
+                    if line not in norm:
+                        norm.append(line)
+                    if len(norm) >= 25:
+                        break
+                if len(norm) >= 8:
+                    break
+            except Exception as e:
+                logger.debug(f"[proxy] fetch failed: {e}")
+
+    _proxy_cache = norm
+    logger.info(f"[proxy] loaded {len(norm)} proxies (auto={_AUTO_PROXY})")
+    return [p for p in norm if p not in _proxy_bad]
+
+
+def _mark_proxy_bad(proxy: str) -> None:
+    if proxy:
+        _proxy_bad.add(proxy)
 
 
 
@@ -136,30 +264,23 @@ def _find_file(video_id: str) -> str | None:
 
 
 def _sync_ytdlp(url: str, video: bool = False) -> str | None:
-    """
-    Classic synchronous yt-dlp download — the old reliable way.
-    Returns local file path or None.
-    """
+    """yt-dlp with cookies + auto proxy rotation; saves cookies on success."""
     video_id = _extract_video_id(url)
     if not video_id or len(video_id) < 3:
         return None
 
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-
     found = _find_file(video_id)
     if found:
         return found
 
     outtmpl = os.path.join(DOWNLOAD_DIR, f"{video_id}.%(ext)s")
     watch = _yt_url(url)
-
-    # Optional cookies (age-gate / datacenter IP blocks)
     cookiefile = _cookies_path()
 
     if video:
         fmt = "best[height<=720]/bestvideo[height<=720]+bestaudio/best"
     else:
-        # m4a preferred — no ffmpeg convert needed for PyTgCalls
         fmt = "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best"
 
     base = {
@@ -171,9 +292,9 @@ def _sync_ytdlp(url: str, video: bool = False) -> str | None:
         "geo_bypass": True,
         "nocheckcertificate": True,
         "noplaylist": True,
-        "retries": 5,
-        "fragment_retries": 5,
-        "file_access_retries": 3,
+        "retries": 2,
+        "fragment_retries": 2,
+        "file_access_retries": 2,
         "ignoreerrors": False,
         "overwrites": True,
         "http_headers": {
@@ -186,71 +307,86 @@ def _sync_ytdlp(url: str, video: bool = False) -> str | None:
     if cookiefile and os.path.isfile(cookiefile):
         base["cookiefile"] = cookiefile
 
-    # Multiple YouTube player clients (order matters)
     clients = [
         ["android", "android_music"],
         ["ios", "ios_music"],
         ["mweb"],
-        ["tv", "tv_embedded"],
         ["web"],
     ]
 
+    proxy_candidates = [None] + _load_proxy_list()[:12]
     last_err = None
-    for i, client in enumerate(clients, 1):
-        o = {
-            **base,
-            "extractor_args": {"youtube": {"player_client": client}},
-        }
-        try:
-            with yt_dlp.YoutubeDL(o) as ydl:
-                info = ydl.extract_info(watch, download=True)
-                if not info:
-                    continue
-                path = None
-                reqs = info.get("requested_downloads") or []
-                if reqs:
-                    path = reqs[0].get("filepath")
-                if not path:
-                    path = ydl.prepare_filename(info)
-                # postprocessors may change extension
-                if path and not os.path.exists(path):
-                    stem = os.path.splitext(path)[0]
-                    for ext in (".m4a", ".webm", ".opus", ".mp3", ".mp4", ".mkv", ".ogg"):
-                        if os.path.exists(stem + ext):
-                            path = stem + ext
-                            break
-                if path and os.path.exists(path) and os.path.getsize(path) > 1024:
+    bot_check = False
+
+    def _try_once(opts):
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(watch, download=True)
+            if not info:
+                return None
+            path = None
+            reqs = info.get("requested_downloads") or []
+            if reqs:
+                path = reqs[0].get("filepath")
+            if not path:
+                path = ydl.prepare_filename(info)
+            if path and not os.path.exists(path):
+                stem = os.path.splitext(path)[0]
+                for ext in (".m4a", ".webm", ".opus", ".mp3", ".mp4", ".mkv", ".ogg"):
+                    if os.path.exists(stem + ext):
+                        path = stem + ext
+                        break
+            if path and os.path.exists(path) and os.path.getsize(path) > 1024:
+                return path
+            return _find_file(video_id)
+
+    for proxy in proxy_candidates:
+        for client in clients:
+            o = {**base, "extractor_args": {"youtube": {"player_client": client}}}
+            if proxy:
+                o["proxy"] = proxy
+            try:
+                path = _try_once(o)
+                if path:
                     logger.info(
-                        f"[yt-dlp] OK client={client} "
-                        f"{os.path.getsize(path)//1024}KB → {path}"
+                        f"[yt-dlp] OK client={client} proxy={proxy or 'direct'} "
+                        f"{os.path.getsize(path)//1024}KB"
                     )
+                    if cookiefile and os.path.isfile(cookiefile):
+                        try:
+                            _save_cookies_bytes(open(cookiefile, "rb").read())
+                        except Exception:
+                            pass
                     return path
-                found = _find_file(video_id)
-                if found:
-                    return found
-        except Exception as e:
-            last_err = e
-            logger.warning(f"[yt-dlp] client={client} failed: {e}")
+            except Exception as e:
+                last_err = e
+                err = str(e).lower()
+                if "sign in" in err or "not a bot" in err or "confirm you" in err:
+                    bot_check = True
+                    logger.warning(
+                        f"[yt-dlp] bot-check client={client} proxy={proxy or 'direct'}"
+                    )
+                    break
+                if proxy and any(
+                    x in err for x in ("proxy", "tunnel", "timed out", "connection", "refused")
+                ):
+                    _mark_proxy_bad(proxy)
+                    break
+                logger.warning(f"[yt-dlp] client={client} proxy={proxy or 'direct'}: {e}")
 
-    # CLI fallback (system / pip entrypoint)
     try:
-        import subprocess
-        import shutil
-
+        import subprocess, shutil
         bin_path = shutil.which("yt-dlp") or "yt-dlp"
         cmd = [
-            bin_path,
-            "-f", fmt,
-            "-o", outtmpl,
-            "--no-playlist",
-            "--geo-bypass",
-            "--no-check-certificates",
+            bin_path, "-f", fmt, "-o", outtmpl,
+            "--no-playlist", "--geo-bypass", "--no-check-certificates",
             "--extractor-args", "youtube:player_client=android,ios,mweb",
-            "-q",
-            watch,
+            "-q", watch,
         ]
         if cookiefile and os.path.isfile(cookiefile):
             cmd[1:1] = ["--cookies", cookiefile]
+        proxies = _load_proxy_list()
+        if proxies:
+            cmd[1:1] = ["--proxy", proxies[0]]
         subprocess.run(cmd, check=False, timeout=240, capture_output=True)
         found = _find_file(video_id)
         if found:
@@ -260,13 +396,18 @@ def _sync_ytdlp(url: str, video: bool = False) -> str | None:
         logger.warning(f"[yt-dlp-cli] {e}")
         last_err = last_err or e
 
+    if bot_check:
+        logger.error(
+            "[yt-dlp] bot-check — need real cookies.txt or residential PROXY_URL"
+        )
     if last_err:
         logger.error(f"[yt-dlp] final error: {last_err}")
     return None
 
 
+
 async def download_song(link: str) -> str:
-    """Classic audio download via yt-dlp."""
+    """BadMusic-style: Shruti first, then yt-dlp."""
     video_id = _extract_video_id(link)
     if not video_id:
         return None
@@ -274,6 +415,9 @@ async def download_song(link: str) -> str:
     cached = _find_file(video_id)
     if cached:
         return cached
+    path = await _download_via_shruti(video_id, video=False)
+    if path:
+        return path
     try:
         return await asyncio.get_event_loop().run_in_executor(
             None, lambda: _sync_ytdlp(link, video=False)
@@ -284,7 +428,7 @@ async def download_song(link: str) -> str:
 
 
 async def download_video(link: str) -> str:
-    """Classic video download via yt-dlp."""
+    """BadMusic-style: Shruti first, then yt-dlp."""
     video_id = _extract_video_id(link)
     if not video_id:
         return None
@@ -292,6 +436,9 @@ async def download_video(link: str) -> str:
     cached = _find_file(video_id)
     if cached:
         return cached
+    path = await _download_via_shruti(video_id, video=True)
+    if path:
+        return path
     try:
         return await asyncio.get_event_loop().run_in_executor(
             None, lambda: _sync_ytdlp(link, video=True)
@@ -299,6 +446,8 @@ async def download_video(link: str) -> str:
     except Exception as e:
         logger.error(f"[download_video] {e}")
         return None
+
+
 
 
 
@@ -463,29 +612,50 @@ async def _download_via_piped(video_id: str, video: bool = False) -> str | None:
 
 
 async def _download_via_shruti(video_id: str, video: bool = False) -> str | None:
+    """
+    BadMusic / ShizuMusic style download:
+      GET {SHRUTI_API_URL}/download?url={id}&type=audio|video&api_key={KEY}
+    """
     if not video_id:
         return None
+    if not SHRUTI_API_KEY:
+        logger.warning("[shruti] no SHRUTI_API_KEY — get one from @SHRUTIAPIBOT")
+        return None
+
+    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
     ext = "mp4" if video else "mp3"
     out = os.path.join(DOWNLOAD_DIR, f"{video_id}.{ext}")
     if os.path.exists(out) and os.path.getsize(out) > 1024:
         return out
+
+    params = {
+        "url": video_id,
+        "type": "video" if video else "audio",
+        "api_key": SHRUTI_API_KEY,
+    }
+    timeout = aiohttp.ClientTimeout(total=SHRUTI_STREAM_TIMEOUT, connect=20)
+
     try:
-        timeout = aiohttp.ClientTimeout(total=90, connect=10)
-        params = {
-            "url": video_id,
-            "type": "video" if video else "audio",
-            "api_key": SHRUTI_API_KEY,
-        }
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(f"{SHRUTI_API_URL}/download", params=params) as resp:
+            async with session.get(
+                f"{SHRUTI_API_URL}/download",
+                params=params,
+                allow_redirects=True,
+            ) as resp:
+                if resp.status == 401:
+                    logger.error(
+                        "[shruti] Invalid API key — open @SHRUTIAPIBOT on Telegram and set SHRUTI_API_KEY"
+                    )
+                    return None
                 if resp.status != 200:
-                    logger.warning(f"[shruti] HTTP {resp.status}")
+                    body = (await resp.text())[:150]
+                    logger.warning(f"[shruti] HTTP {resp.status}: {body}")
                     return None
                 async with aiofiles.open(out, "wb") as f:
                     async for chunk in resp.content.iter_chunked(131072):
                         await f.write(chunk)
         if os.path.exists(out) and os.path.getsize(out) > 1024:
-            logger.info(f"[shruti] OK — {os.path.getsize(out)//1024}KB")
+            logger.info(f"[shruti] OK — {os.path.getsize(out)//1024}KB → {out}")
             return out
         _cleanup(out)
     except Exception as e:
@@ -494,9 +664,15 @@ async def _download_via_shruti(video_id: str, video: bool = False) -> str | None
     return None
 
 
+
 async def resolve_stream(url: str, video: bool = False) -> str:
     """
-    1) local/cache  2) yt-dlp (+ cookies)  3) Piped  4) Shruti
+    BadMusic/ShizuMusic-style chain:
+      1) local / cache
+      2) Shruti API  (primary — same as BadMusic)
+      3) yt-dlp + cookies / proxy
+      4) optional Eldian host (if not localhost-only failure)
+      5) Piped
     """
     if url and os.path.exists(url) and os.path.isfile(url):
         return url
@@ -512,22 +688,35 @@ async def resolve_stream(url: str, video: bool = False) -> str:
 
     errors = []
 
-    # 1) yt-dlp first when cookies present (only reliable cloud path)
-    cookies = _cookies_path()
-    if cookies:
-        logger.info(f"[resolve] yt-dlp+cookies {video_id} video={video}")
-        try:
-            path = await (download_video(url) if video else download_song(url))
-            if path and os.path.exists(path):
-                _file_cache[url] = path
-                return path
-        except Exception as e:
-            errors.append(f"yt-dlp+cookies: {e}")
-            logger.warning(f"[resolve] yt-dlp+cookies: {e}")
+    # 1) Shruti — BadMusic / ShizuMusic primary path
+    logger.info(f"[resolve] shruti {video_id} video={video}")
+    try:
+        path = await _download_via_shruti(video_id, video=video)
+        if path and os.path.exists(path):
+            _file_cache[url] = path
+            return path
+        if not SHRUTI_API_KEY:
+            errors.append("shruti: set SHRUTI_API_KEY from @SHRUTIAPIBOT")
+        else:
+            errors.append("shruti: failed")
+    except Exception as e:
+        errors.append(f"shruti: {e}")
+        logger.warning(f"[resolve] shruti: {e}")
 
-    # 2) Eldian only if user configured a live host
-    if ELDIAN_API_URL:
-        logger.info(f"[resolve] eldian {video_id} video={video}")
+    # 2) yt-dlp (cookies + auto proxy)
+    logger.info(f"[resolve] yt-dlp {video_id} video={video}")
+    try:
+        path = await (download_video(url) if video else download_song(url))
+        if path and os.path.exists(path):
+            _file_cache[url] = path
+            return path
+    except Exception as e:
+        errors.append(f"yt-dlp: {e}")
+        logger.warning(f"[resolve] yt-dlp: {e}")
+
+    # 3) External Eldian only if user set a non-local host
+    if ELDIAN_API_URL and "127.0.0.1" not in ELDIAN_API_URL and "localhost" not in ELDIAN_API_URL:
+        logger.info(f"[resolve] eldian {video_id}")
         try:
             path = await _download_via_eldian(video_id, video=video)
             if path and os.path.exists(path):
@@ -536,21 +725,9 @@ async def resolve_stream(url: str, video: bool = False) -> str:
             errors.append("eldian: no file")
         except Exception as e:
             errors.append(f"eldian: {e}")
-            logger.warning(f"[resolve] eldian: {e}")
 
-    # 3) yt-dlp without cookies (residential IPs OK; Render usually blocked)
-    if not cookies:
-        logger.info(f"[resolve] yt-dlp {video_id} video={video}")
-        try:
-            path = await (download_video(url) if video else download_song(url))
-            if path and os.path.exists(path):
-                _file_cache[url] = path
-                return path
-        except Exception as e:
-            errors.append(f"yt-dlp: {e}")
-            logger.warning(f"[resolve] yt-dlp: {e}")
-
-    logger.info(f"[resolve] piped fallback {video_id}")
+    # 4) Piped
+    logger.info(f"[resolve] piped {video_id}")
     try:
         path = await _download_via_piped(video_id, video=video)
         if path:
@@ -558,24 +735,15 @@ async def resolve_stream(url: str, video: bool = False) -> str:
             return path
     except Exception as e:
         errors.append(f"piped: {e}")
-        logger.warning(f"[resolve] piped: {e}")
-
-    logger.info(f"[resolve] shruti fallback {video_id}")
-    try:
-        path = await _download_via_shruti(video_id, video=video)
-        if path:
-            _file_cache[url] = path
-            return path
-    except Exception as e:
-        errors.append(f"shruti: {e}")
 
     tip = (
-        "YouTube blocked this server (bot-check). "
-        "Export cookies.txt → set YTDLP_COOKIES=/app/cookies.txt "
-        "or YTDLP_COOKIES_URL=https://your-file-host/cookies.txt"
+        "Get SHRUTI_API_KEY from @SHRUTIAPIBOT (same as BadMusic/ShizuMusic), "
+        "or set YTDLP_COOKIES=/app/cookies.txt"
     )
-    detail = "; ".join(str(x)[:120] for x in errors[:2]) if errors else "all methods failed"
+    detail = "; ".join(str(x)[:100] for x in errors[:3]) if errors else "all failed"
     raise Exception(f"{tip} | {detail}"[:500])
+
+
 
 
 # ═════════════════════════════════════════════════════════════════════════════

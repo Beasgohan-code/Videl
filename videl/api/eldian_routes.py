@@ -33,24 +33,38 @@ def _extract_id(value: str) -> str | None:
 
 
 def _cookies_file() -> str | None:
+    paths = []
     for key in ("YTDLP_COOKIES", "COOKIES_PATH", "YOUTUBE_COOKIES_FILE"):
-        p = os.environ.get(key)
-        if p and os.path.isfile(p):
-            return p
-    # Runtime download from URL
+        v = os.environ.get(key)
+        if v:
+            paths.append(v)
+    paths.extend(["cookies.txt", "/app/cookies.txt", str(Path("downloads") / "cookies.txt")])
+
+    def _is_real(path: str) -> bool:
+        try:
+            raw = Path(path).read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            return False
+        markers = ("SID", "HSID", "SSID", "LOGIN_INFO", "__Secure-", "SAPISID", "APISID")
+        return any(m in raw for m in markers)
+
+    for path in paths:
+        if path and os.path.isfile(path) and os.path.getsize(path) > 80 and _is_real(path):
+            return path
+
     url = (os.environ.get("YTDLP_COOKIES_URL") or "").strip()
     if not url:
         return None
     dest = Path("downloads") / "cookies.txt"
     try:
-        if dest.is_file() and dest.stat().st_size > 50:
+        if dest.is_file() and dest.stat().st_size > 80 and _is_real(str(dest)):
             return str(dest)
         import urllib.request
 
         req = urllib.request.Request(url, headers={"User-Agent": "VidelBot"})
         with urllib.request.urlopen(req, timeout=30) as resp:
             data = resp.read()
-        if len(data) > 50:
+        if len(data) > 80:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(data)
             return str(dest)
@@ -88,6 +102,11 @@ def _ydl_download(video_id: str, video: bool = False) -> Path:
     cookies = _cookies_file()
     if cookies:
         opts["cookiefile"] = cookies
+    proxy = (os.environ.get("PROXY_URL") or os.environ.get("YOUTUBE_PROXY") or "").strip()
+    if proxy:
+        if "://" not in proxy:
+            proxy = "http://" + proxy
+        opts["proxy"] = proxy
 
     last_err: Exception | None = None
     for attempt in range(1, 4):
