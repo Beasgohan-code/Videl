@@ -21,20 +21,28 @@ from videl.utils.formatters import sec_to_iso
 logger = logging.getLogger(__name__)
 
 # ── API config ────────────────────────────────────────────────────────────────
-# Eldian Music API — primary download (bypasses YT bot-check on cloud hosts)
-# Docs: https://github.com/Eldian-Network/eldian-music-api
-# Public instance used by music bots (stream endpoints):
-ELDIAN_API_URL = os.environ.get(
-    "ELDIAN_API_URL",
-    "https://eldian-music-api-production.up.railway.app",
+# Eldian (optional — public Railway host is dead as of Sep 2026)
+# Set your own: ELDIAN_API_URL=https://your-host  ELDIAN_API_KEY=...
+# Default: use this same Render service's built-in API (localhost)
+# Override with a separate Eldian host if you deploy one.
+_port = os.environ.get("PORT") or "10000"
+ELDIAN_API_URL = (
+    os.environ.get("ELDIAN_API_URL")
+    or f"http://127.0.0.1:{_port}"
 ).rstrip("/")
-ELDIAN_API_KEY = os.environ.get("ELDIAN_API_KEY", "").strip()  # optional for /v1/track
+ELDIAN_API_KEY = os.environ.get("ELDIAN_API_KEY", "").strip()
 
 SHRUTI_API_URL        = os.environ.get("SHRUTI_API_URL", "https://api.shrutibots.site")
 SHRUTI_API_KEY        = os.environ.get("SHRUTI_API_KEY", "ShrutiBots1JyNWUFBwhFiouHmUyXC")
 DOWNLOAD_DIR          = "downloads"
 SHRUTI_TOKEN_TIMEOUT  = 10
 SHRUTI_STREAM_TIMEOUT = 900
+
+# Cookies — only reliable fix for YouTube bot-check on Render/Railway
+# YTDLP_COOKIES=/app/cookies.txt   OR
+# YTDLP_COOKIES_URL=https://.../cookies.txt  (downloaded at runtime)
+_COOKIES_FILE = os.environ.get("YTDLP_COOKIES") or os.environ.get("COOKIES_PATH") or ""
+_COOKIES_URL  = (os.environ.get("YTDLP_COOKIES_URL") or "").strip()
 
 _file_cache: dict[str, str] = {}
 
@@ -58,6 +66,39 @@ def _cleanup(path: str) -> None:
             os.remove(path)
     except Exception:
         pass
+
+def _cookies_path() -> str | None:
+    """Return path to a valid Netscape cookies file, or None."""
+    global _COOKIES_FILE
+    # 1) local path
+    if _COOKIES_FILE and os.path.isfile(_COOKIES_FILE):
+        return _COOKIES_FILE
+    # 2) download from URL once
+    if _COOKIES_URL:
+        dest = os.path.join(DOWNLOAD_DIR, "cookies.txt")
+        os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+        if os.path.isfile(dest) and os.path.getsize(dest) > 50:
+            _COOKIES_FILE = dest
+            return dest
+        try:
+            import urllib.request
+            req = urllib.request.Request(
+                _COOKIES_URL,
+                headers={"User-Agent": "Mozilla/5.0 VidelBot"},
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = resp.read()
+            if data and len(data) > 50:
+                with open(dest, "wb") as f:
+                    f.write(data)
+                _COOKIES_FILE = dest
+                logger.info(f"[cookies] downloaded {len(data)} bytes → {dest}")
+                return dest
+        except Exception as e:
+            logger.warning(f"[cookies] URL fetch failed: {e}")
+    return None
+
+
 
 
 def time_to_seconds(time) -> int:
@@ -113,7 +154,7 @@ def _sync_ytdlp(url: str, video: bool = False) -> str | None:
     watch = _yt_url(url)
 
     # Optional cookies (age-gate / datacenter IP blocks)
-    cookiefile = os.environ.get("YTDLP_COOKIES") or os.environ.get("COOKIES_PATH")
+    cookiefile = _cookies_path()
 
     if video:
         fmt = "best[height<=720]/bestvideo[height<=720]+bestaudio/best"
@@ -471,28 +512,43 @@ async def resolve_stream(url: str, video: bool = False) -> str:
 
     errors = []
 
-    # 1) Eldian API (primary — works on Render without YT cookies)
-    logger.info(f"[resolve] eldian {video_id} video={video}")
-    try:
-        path = await _download_via_eldian(video_id, video=video)
-        if path and os.path.exists(path):
-            _file_cache[url] = path
-            return path
-        errors.append("eldian: no file")
-    except Exception as e:
-        errors.append(f"eldian: {e}")
-        logger.warning(f"[resolve] eldian: {e}")
+    # 1) yt-dlp first when cookies present (only reliable cloud path)
+    cookies = _cookies_path()
+    if cookies:
+        logger.info(f"[resolve] yt-dlp+cookies {video_id} video={video}")
+        try:
+            path = await (download_video(url) if video else download_song(url))
+            if path and os.path.exists(path):
+                _file_cache[url] = path
+                return path
+        except Exception as e:
+            errors.append(f"yt-dlp+cookies: {e}")
+            logger.warning(f"[resolve] yt-dlp+cookies: {e}")
 
-    # 2) yt-dlp (cookies / local)
-    logger.info(f"[resolve] yt-dlp {video_id} video={video}")
-    try:
-        path = await (download_video(url) if video else download_song(url))
-        if path and os.path.exists(path):
-            _file_cache[url] = path
-            return path
-    except Exception as e:
-        errors.append(f"yt-dlp: {e}")
-        logger.warning(f"[resolve] yt-dlp: {e}")
+    # 2) Eldian only if user configured a live host
+    if ELDIAN_API_URL:
+        logger.info(f"[resolve] eldian {video_id} video={video}")
+        try:
+            path = await _download_via_eldian(video_id, video=video)
+            if path and os.path.exists(path):
+                _file_cache[url] = path
+                return path
+            errors.append("eldian: no file")
+        except Exception as e:
+            errors.append(f"eldian: {e}")
+            logger.warning(f"[resolve] eldian: {e}")
+
+    # 3) yt-dlp without cookies (residential IPs OK; Render usually blocked)
+    if not cookies:
+        logger.info(f"[resolve] yt-dlp {video_id} video={video}")
+        try:
+            path = await (download_video(url) if video else download_song(url))
+            if path and os.path.exists(path):
+                _file_cache[url] = path
+                return path
+        except Exception as e:
+            errors.append(f"yt-dlp: {e}")
+            logger.warning(f"[resolve] yt-dlp: {e}")
 
     logger.info(f"[resolve] piped fallback {video_id}")
     try:
@@ -514,8 +570,9 @@ async def resolve_stream(url: str, video: bool = False) -> str:
         errors.append(f"shruti: {e}")
 
     tip = (
-        "All download backends failed. "
-        "Set ELDIAN_API_URL / ELDIAN_API_KEY or YTDLP_COOKIES=/app/cookies.txt"
+        "YouTube blocked this server (bot-check). "
+        "Export cookies.txt → set YTDLP_COOKIES=/app/cookies.txt "
+        "or YTDLP_COOKIES_URL=https://your-file-host/cookies.txt"
     )
     detail = "; ".join(str(x)[:120] for x in errors[:2]) if errors else "all methods failed"
     raise Exception(f"{tip} | {detail}"[:500])

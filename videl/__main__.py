@@ -12,7 +12,7 @@ import threading
 import time
 
 import requests
-from flask import Flask
+from flask import Flask, jsonify
 from pyrogram import idle
 from pyrogram.types import BotCommand
 
@@ -28,24 +28,45 @@ from videl.utils.rich_ui import (
 
 ASSISTANT_USERNAME: str = ""
 
-# ── Flask health check ────────────────────────────────────────────────────────
+# ── Flask health + built-in Eldian-compatible download API ────────────────────
 
 _flask = Flask(__name__)
 
 
 @_flask.route("/")
 def _home():
-    return "Videl Music is running | by Beasgohan-code", 200
+    return jsonify(
+        {
+            "service": "Videl Music",
+            "status": "running",
+            "api": {
+                "status": "/api/status",
+                "audio": "/api/stream_audio?url=YOUTUBE_URL",
+                "video": "/api/download?url=YOUTUBE_URL",
+                "eldian_v1": "POST /v1/track/by-video-id",
+            },
+            "credit": "Beasgohan-code · Eldian-compatible API built-in",
+        }
+    ), 200
 
 
 @_flask.route("/health")
 def _health():
-    return "Videl Music is running | by Beasgohan-code", 200
+    return jsonify({"status": "ok", "service": "videl"}), 200
+
+
+# Register Eldian-style download routes (same process as the bot)
+try:
+    from videl.api.eldian_routes import register_eldian_routes
+
+    register_eldian_routes(_flask)
+except Exception as _api_err:
+    LOGGER.warning(f"Built-in download API not loaded: {_api_err}")
 
 
 def _run_flask() -> None:
     port = int(os.getenv("PORT", str(config.PORT)))
-    LOGGER.info(f"Binding health server on 0.0.0.0:{port}")
+    LOGGER.info(f"Binding health+API server on 0.0.0.0:{port}")
     _flask.run(host="0.0.0.0", port=port, use_reloader=False, threaded=True)
 
 

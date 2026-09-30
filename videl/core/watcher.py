@@ -57,13 +57,20 @@ async def _auto_leave_idle_vcs() -> None:
         # call_py may expose active calls differently depending on version
         active = []
         try:
-            # pytgcalls 2.x — group_calls may be async property; never call bare
+            import inspect
             calls = getattr(call_py, "calls", None)
-            if calls is not None and not callable(calls):
-                active = list(calls.keys() if hasattr(calls, "keys") else calls or [])
-            else:
-                # avoid awaiting group_calls incorrectly — skip if unknown
-                active = []
+            # pytgcalls may expose calls as async — await or skip
+            if inspect.iscoroutine(calls):
+                try:
+                    calls = await calls
+                except Exception:
+                    calls = None
+            elif callable(calls) and not isinstance(calls, (dict, list)):
+                calls = None
+            if isinstance(calls, dict):
+                active = list(calls.keys())
+            elif isinstance(calls, (list, set, tuple)):
+                active = list(calls)
         except Exception:
             active = []
 
